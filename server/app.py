@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .adapters.ocr import extract_text
 from .adapters.payment import create_payment
-from .config import HOST, PORT, UPLOAD_DIR
+from .config import AI_PROVIDER, HOST, OCR_PROVIDER, PAYMENT_PROVIDER, PORT, UPLOAD_DIR
 from .rules import generate_report
 from .storage import ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
 
@@ -25,7 +25,15 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         user_id = self.current_user_id()
 
         if route == "/health":
-            self.send_json({"ok": True, "service": "bikengbao-api"})
+            self.send_json(
+                {
+                    "ok": True,
+                    "service": "bikengbao-api",
+                    "aiProvider": AI_PROVIDER,
+                    "ocrProvider": OCR_PROVIDER,
+                    "paymentProvider": PAYMENT_PROVIDER,
+                }
+            )
             return
 
         if route == "/v1/reports":

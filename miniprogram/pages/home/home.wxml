@@ -1,0 +1,84 @@
+<view class="page home-page">
+  <view class="hero">
+    <text class="eyebrow">装修报价 / 合同审核</text>
+    <text class="h1">上传报价单，先查清楚再付款</text>
+    <text class="muted">识别报价虚高、漏项、增项、付款节点和合同模糊条款。</text>
+  </view>
+
+  <view class="upload card" bindtap="chooseFiles">
+    <view class="upload-icon">+</view>
+    <text class="upload-title">上传图片、PDF 或聊天截图</text>
+    <text class="muted">支持报价单照片、合同截图、户型图、商家聊天记录</text>
+  </view>
+
+  <view class="file-list" wx:if="{{files.length}}">
+    <view class="file-pill" wx:for="{{files}}" wx:key="id">
+      <text>{{item.name}}</text>
+      <text class="muted">{{item.statusText}}</text>
+    </view>
+  </view>
+
+  <view class="form card">
+    <view class="field">
+      <text>资料类型</text>
+      <picker range="{{docTypes}}" value="{{docTypeIndex}}" bindchange="onDocTypeChange">
+        <view class="picker">{{form.docType}}</view>
+      </picker>
+    </view>
+
+    <view class="grid">
+      <view class="field">
+        <text>所在城市</text>
+        <input value="{{form.city}}" data-key="city" bindinput="onInput" placeholder="例如：上海" />
+      </view>
+      <view class="field">
+        <text>房屋面积 m²</text>
+        <input type="number" value="{{form.area}}" data-key="area" bindinput="onInput" placeholder="例如：89" />
+      </view>
+    </view>
+
+    <view class="field">
+      <text>装修类型</text>
+      <picker range="{{homeTypes}}" value="{{homeTypeIndex}}" bindchange="onHomeTypeChange">
+        <view class="picker">{{form.homeType}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text>装修阶段</text>
+      <picker range="{{stages}}" value="{{stageIndex}}" bindchange="onStageChange">
+        <view class="picker">{{form.stage}}</view>
+      </picker>
+    </view>
+
+    <view class="grid">
+      <view class="field">
+        <text>报价总额 元</text>
+        <input type="number" value="{{form.budget}}" data-key="budget" bindinput="onInput" placeholder="例如：128000" />
+      </view>
+      <view class="field">
+        <text>商家备注</text>
+        <input value="{{form.vendor}}" data-key="vendor" bindinput="onInput" placeholder="例如：某装修公司" />
+      </view>
+    </view>
+
+    <view class="field">
+      <text>OCR 文本 / 合同报价内容</text>
+      <textarea value="{{form.ocrText}}" data-key="ocrText" bindinput="onInput" maxlength="-1" placeholder="真实 OCR 会自动填入；也可以先粘贴报价或合同文字。" />
+    </view>
+
+    <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submitAudit">
+      生成免费预览
+    </button>
+    <button class="ghost-btn sample-btn" bindtap="fillSample">填入高风险样例</button>
+  </view>
+
+  <view class="metrics card">
+    <text class="h2">V1 验证指标</text>
+    <view class="metric-row">
+      <view><text class="metric-value">≥10%</text><text class="muted">上传转化</text></view>
+      <view><text class="metric-value">≥8%</text><text class="muted">付费转化</text></view>
+      <view><text class="metric-value">≥29元</text><text class="muted">单次付费</text></view>
+    </view>
+  </view>
+</view>

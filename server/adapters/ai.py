@@ -15,9 +15,17 @@ def enrich_report(base_report: Dict) -> Dict:
     schema.
     """
     if AI_PROVIDER == "mock":
-        return base_report
+        report = dict(base_report)
+        report["aiStatus"] = "mock"
+        return report
     if AI_PROVIDER == "deepseek":
-        return enrich_with_deepseek(base_report)
+        try:
+            return enrich_with_deepseek(base_report)
+        except Exception as error:
+            report = dict(base_report)
+            report["aiStatus"] = "deepseek_error"
+            report["aiError"] = str(error)[:300]
+            return report
     raise NotImplementedError(f"AI provider {AI_PROVIDER} is not configured yet.")
 
 
@@ -79,6 +87,7 @@ def enrich_with_deepseek(base_report: Dict) -> Dict:
     content = completion["choices"][0]["message"]["content"]
     enhanced = json.loads(content)
     report = dict(base_report)
+    report["aiStatus"] = "deepseek_ok"
     if isinstance(enhanced.get("familySummary"), str):
         report["familySummary"] = enhanced["familySummary"]
     for key in ["questions", "scripts", "nextSteps"]:

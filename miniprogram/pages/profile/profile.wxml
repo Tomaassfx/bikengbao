@@ -1,0 +1,22 @@
+<view class="page profile-page">
+  <view class="profile card">
+    <text class="eyebrow">避坑宝 MVP</text>
+    <text class="h1">花钱前审一审</text>
+    <text class="muted">当前版本用于真实验证上传、预览、付费解锁、历史记录和资料删除。</text>
+  </view>
+
+  <view class="section card">
+    <text class="h2">服务边界</text>
+    <text class="muted">报告仅作为消费决策辅助，不构成法律意见、工程鉴定、价格鉴定或监理意见。</text>
+  </view>
+
+  <view class="section card">
+    <text class="h2">资料安全</text>
+    <text class="muted">上传文件与报告通过后端保存。用户可在历史记录中删除资料，正式上线需接入加密存储、隐私政策和用户协议。</text>
+  </view>
+
+  <view class="section card">
+    <text class="h2">后续能力</text>
+    <text class="muted">等待接入真实 OCR、AI API、微信支付和城市价格库。</text>
+  </view>
+</view>

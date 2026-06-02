@@ -1,0 +1,51 @@
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.empty {
+  display: flex;
+  min-height: 280rpx;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 32rpx;
+}
+
+.report-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-bottom: 18rpx;
+  padding: 24rpx;
+}
+
+.title {
+  display: block;
+  margin: 10rpx 0;
+  color: #172026;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+}
+
+.delete-btn {
+  display: flex;
+  min-height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #f0c5bf;
+  background: #fff1ef;
+  color: #c75146;
+  font-size: 30rpx;
+  font-weight: 700;
+}

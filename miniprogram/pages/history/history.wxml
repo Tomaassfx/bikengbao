@@ -1,0 +1,24 @@
+<view class="page history-page">
+  <view class="head">
+    <text class="eyebrow">本账号报告</text>
+    <text class="h1">已审核资料</text>
+    <text class="muted">报告和上传资料保存在服务端，用户可以查看历史并删除资料。</text>
+  </view>
+
+  <view class="empty card" wx:if="{{!loading && !reports.length}}">
+    <text class="h2">暂无历史记录</text>
+    <text class="muted">生成报告后会自动出现在这里。</text>
+  </view>
+
+  <view class="report-card card" wx:for="{{reports}}" wx:key="id">
+    <view bindtap="openReport" data-id="{{item.id}}">
+      <text class="eyebrow">{{item.unlocked ? "已解锁" : "免费预览"}}</text>
+      <text class="title">{{item.title}}</text>
+      <text class="muted">{{item.createdAt}} · {{item.conclusion}} · {{item.riskCount}} 条风险</text>
+    </view>
+    <view class="actions">
+      <button class="ghost-btn" data-id="{{item.id}}" bindtap="openReport">查看</button>
+      <button class="delete-btn" data-id="{{item.id}}" bindtap="deleteReport">删除资料</button>
+    </view>
+  </view>
+</view>

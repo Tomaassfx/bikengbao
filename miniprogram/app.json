@@ -1,0 +1,36 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/report/report",
+    "pages/history/history",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarTitleText": "避坑宝",
+    "navigationBarBackgroundColor": "#0f766e",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f4f1eb"
+  },
+  "tabBar": {
+    "color": "#65717a",
+    "selectedColor": "#0f766e",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "上传审核"
+      },
+      {
+        "pagePath": "pages/history/history",
+        "text": "历史记录"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

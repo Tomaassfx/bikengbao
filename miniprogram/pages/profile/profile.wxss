@@ -1,0 +1,8 @@
+.profile,
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-bottom: 22rpx;
+  padding: 28rpx;
+}

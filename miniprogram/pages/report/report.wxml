@@ -1,0 +1,101 @@
+<view class="page report-page" wx:if="{{report}}">
+  <view class="report-head card">
+    <view>
+      <text class="eyebrow">{{report.docType}}审核报告</text>
+      <text class="h1">{{report.title}}</text>
+      <text class="muted">{{report.fileSummary}}</text>
+    </view>
+    <view class="score">
+      <text>{{report.score}}</text>
+      <text>风险评分</text>
+    </view>
+  </view>
+
+  <view class="summary">
+    <view class="summary-item card"><text>总体结论</text><text>{{report.conclusion}}</text></view>
+    <view class="summary-item card"><text>报价总额</text><text>{{report.totalText}}</text></view>
+    <view class="summary-item card"><text>单平价格</text><text>{{report.unitPriceText}}</text></view>
+    <view class="summary-item card"><text>审核时间</text><text>{{report.createdAt}}</text></view>
+  </view>
+
+  <view class="section card">
+    <view class="section-title">
+      <text class="h2">风险明细</text>
+      <text class="badge">{{unlocked ? "完整报告" : "免费预览 3 条"}}</text>
+    </view>
+    <view class="risk {{item.className}}" wx:for="{{visibleRisks}}" wx:key="id">
+      <view class="risk-top">
+        <text>{{item.level}}风险</text>
+        <text>{{item.category}}</text>
+      </view>
+      <text class="risk-title">{{item.title}}</text>
+      <text class="muted">{{item.reason}}</text>
+      <view class="ask">
+        <text>建议追问</text>
+        <text>{{item.ask}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="paywall card" wx:if="{{!unlocked}}">
+    <text class="h2">解锁完整报告</text>
+    <text class="muted">查看全部 {{report.risks.length}} 条风险、报价概览、追问清单、砍价话术和家人版总结。</text>
+    <view class="prices">
+      <button class="price {{selectedPrice === 29 ? 'selected' : ''}}" data-price="29" bindtap="selectPrice">29 元</button>
+      <button class="price {{selectedPrice === 59 ? 'selected' : ''}}" data-price="59" bindtap="selectPrice">59 元</button>
+      <button class="price {{selectedPrice === 99 ? 'selected' : ''}}" data-price="99" bindtap="selectPrice">99 元</button>
+    </view>
+    <button class="primary-btn" loading="{{paying}}" bindtap="createOrder">支付并解锁</button>
+    <text class="muted">开发环境可使用后端模拟支付；上线时替换为微信支付。</text>
+  </view>
+
+  <block wx:if="{{unlocked}}">
+    <view class="section card">
+      <view class="section-title"><text class="h2">报价概览</text><text class="badge">{{report.vendor}}</text></view>
+      <view class="item" wx:for="{{report.items}}" wx:key="name">
+        <text>{{item.name}}</text>
+        <text>{{item.estimatedText}}</text>
+        <text class="muted">参考范围：{{item.range}}</text>
+        <text class="muted">{{item.note}}</text>
+      </view>
+    </view>
+
+    <view class="section card">
+      <text class="h2">需要追问商家</text>
+      <view class="list-row" wx:for="{{report.questions}}" wx:key="*this">
+        <text>{{index + 1}}.</text>
+        <text>{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section card">
+      <text class="h2">下一步建议</text>
+      <view class="list-row" wx:for="{{report.nextSteps}}" wx:key="*this">
+        <text>{{index + 1}}.</text>
+        <text>{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section card">
+      <view class="section-title">
+        <text class="h2">可复制沟通话术</text>
+        <button class="mini-btn" data-kind="scripts" bindtap="copyText">复制</button>
+      </view>
+      <text class="script" wx:for="{{report.scripts}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <view class="section card">
+      <view class="section-title">
+        <text class="h2">家人版总结</text>
+        <button class="mini-btn" data-kind="family" bindtap="copyText">复制</button>
+      </view>
+      <text class="family">{{report.familySummary}}</text>
+      <text class="disclaimer">{{report.disclaimer}}</text>
+    </view>
+  </block>
+</view>
+
+<view class="page empty" wx:else>
+  <text class="h2">报告加载中</text>
+  <text class="muted">如果长时间无响应，请返回重新生成报告。</text>
+</view>

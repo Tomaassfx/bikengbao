@@ -1,0 +1,129 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-bottom: 28rpx;
+}
+
+.upload {
+  display: flex;
+  min-height: 280rpx;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14rpx;
+  border-style: dashed;
+  background: #f6fbf9;
+  padding: 34rpx;
+  text-align: center;
+}
+
+.upload-icon {
+  display: flex;
+  width: 76rpx;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 52rpx;
+  font-weight: 300;
+}
+
+.upload-title {
+  color: #172026;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin: 20rpx 0;
+}
+
+.file-pill {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+  border-radius: 14rpx;
+  background: #eef3ef;
+  padding: 16rpx 18rpx;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+  margin-top: 24rpx;
+  padding: 28rpx;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.field > text {
+  color: #2d3b41;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+input,
+textarea,
+.picker {
+  width: 100%;
+  min-height: 88rpx;
+  border: 1rpx solid #cfdad5;
+  border-radius: 16rpx;
+  background: #ffffff;
+  color: #172026;
+  padding: 22rpx;
+}
+
+textarea {
+  min-height: 220rpx;
+  line-height: 1.55;
+}
+
+.sample-btn {
+  margin-top: 8rpx;
+}
+
+.metrics {
+  margin-top: 24rpx;
+  padding: 28rpx;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.metric-row > view {
+  display: flex;
+  min-height: 132rpx;
+  justify-content: center;
+  flex-direction: column;
+  border-radius: 14rpx;
+  background: #f6f8f4;
+  padding: 16rpx;
+}
+
+.metric-value {
+  color: #6d4b7f;
+  font-size: 34rpx;
+  font-weight: 800;
+}

@@ -44,10 +44,13 @@ BIKENGBAO_AI_PROVIDER=deepseek
 DEEPSEEK_API_KEY=你的 DeepSeek API Key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
-BIKENGBAO_DATA_DIR=/tmp/bikengbao
+BIKENGBAO_DB_PROVIDER=postgres
+DATABASE_URL=Neon Postgres 连接串
+BIKENGBAO_FILE_STORAGE_PROVIDER=blob
+BLOB_READ_WRITE_TOKEN=Vercel Blob 读写 Token
 ```
 
-注意：`/tmp` 只能用于演示，Vercel Serverless 不适合用本地文件做生产持久化。正式上线必须接数据库和对象存储。
+本地开发未配置 `DATABASE_URL` 和 `BLOB_READ_WRITE_TOKEN` 时，会自动回退到 JSON 文件数据库和本地上传目录。正式线上不要依赖 `/tmp`，否则 Serverless 实例回收后数据会丢失。
 
 Web 演示页本地预览：
 
@@ -65,9 +68,10 @@ python3 -m http.server 4173
 - Web 页面与小程序共用后端 API，本地模拟微信登录和模拟支付，便于先验证产品闭环。
 - 规则引擎生成报价/合同风险、追问清单、砍价话术、家人版总结。
 - DeepSeek AI 适配已实现，OCR、微信支付适配器仍为占位，后续可以接真实服务。
+- 生产数据层适配已实现：Neon Postgres 存用户、文件记录、报告和订单；Vercel Blob 存用户上传原始文件。
 
 ## V1 边界
 
-当前后端使用本地 JSON 文件作为数据库，适合 MVP 开发、Vercel 演示和端到端流程测试。Vercel Serverless 的 `/tmp` 不是稳定持久化存储，正式上线前需要替换为生产数据库、对象存储、真实 OCR、微信支付、HTTPS 域名、隐私政策和用户协议。
+当前后端仍保留本地 JSON 和本地文件作为开发兜底。正式上线前还需要替换真实 OCR、微信支付、微信登录、隐私政策和用户协议。
 
 本产品不提供法律意见、工程鉴定、装修公司推荐或监理服务。报告仅作为消费决策辅助。

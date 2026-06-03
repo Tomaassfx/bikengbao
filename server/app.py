@@ -3,15 +3,15 @@ import json
 import re
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
+from .adapters.file_storage import active_file_storage_provider, delete_upload, save_upload
 from .adapters.ocr import extract_text
 from .adapters.payment import create_payment
-from .config import AI_PROVIDER, HOST, OCR_PROVIDER, PAYMENT_PROVIDER, PORT, UPLOAD_DIR
+from .config import AI_PROVIDER, HOST, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
 from .rules import generate_report
-from .storage import ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
+from .storage import active_db_provider, ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
 
 DEFAULT_USER_ID = "demo_user"
 
@@ -32,6 +32,8 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
                     "aiProvider": AI_PROVIDER,
                     "ocrProvider": OCR_PROVIDER,
                     "paymentProvider": PAYMENT_PROVIDER,
+                    "dbProvider": active_db_provider(),
+                    "fileStorageProvider": active_file_storage_provider(),
                 }
             )
             return
@@ -101,9 +103,7 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             if not file_record:
                 continue
             file_record["deleted"] = True
-            path = Path(file_record.get("path", ""))
-            if path.exists() and path.is_file():
-                path.unlink()
+            delete_upload(file_record)
         save_db(db)
         self.send_json({"ok": True})
 
@@ -142,21 +142,24 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             return
 
         file_id = uuid.uuid4().hex
-        filename = Path(file_item.filename).name
-        suffix = Path(filename).suffix or ".upload"
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        saved_path = UPLOAD_DIR / f"{file_id}{suffix}"
-        with saved_path.open("wb") as output:
-            output.write(file_item.file.read())
+        filename = file_item.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        file_body = file_item.file.read()
+        storage_record = save_upload(
+            file_id,
+            filename,
+            file_body,
+            getattr(file_item, "type", "") or "",
+        )
 
         file_record = {
             "id": file_id,
             "userId": user_id,
             "filename": filename,
             "docType": form.getvalue("docType") or "",
-            "path": str(saved_path),
             "createdAt": now_text(),
+            "createdAtMs": now_ms(),
             "deleted": False,
+            **storage_record,
         }
         file_record["ocrText"] = extract_text(file_record)
 

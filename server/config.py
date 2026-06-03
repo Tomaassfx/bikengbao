@@ -9,6 +9,16 @@ DB_PATH = DATA_DIR / "db.json"
 HOST = os.getenv("BIKENGBAO_HOST", "127.0.0.1")
 PORT = int(os.getenv("BIKENGBAO_PORT", "8787"))
 
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+DB_PROVIDER = os.getenv("BIKENGBAO_DB_PROVIDER", "postgres" if DATABASE_URL else "json")
+
+FILE_STORAGE_PROVIDER = os.getenv(
+    "BIKENGBAO_FILE_STORAGE_PROVIDER",
+    "blob" if os.getenv("BLOB_READ_WRITE_TOKEN") else "local",
+)
+BLOB_READ_WRITE_TOKEN = os.getenv("BLOB_READ_WRITE_TOKEN", "")
+BLOB_ACCESS = os.getenv("BIKENGBAO_BLOB_ACCESS", "public")
+
 AI_PROVIDER = os.getenv("BIKENGBAO_AI_PROVIDER", "mock")
 OCR_PROVIDER = os.getenv("BIKENGBAO_OCR_PROVIDER", "mock")
 PAYMENT_PROVIDER = os.getenv("BIKENGBAO_PAYMENT_PROVIDER", "mock")

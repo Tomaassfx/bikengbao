@@ -2,8 +2,8 @@
 
 ## 必须替换
 
-- 数据库：将 `server/data/db.json` 替换为 MySQL/PostgreSQL/MongoDB。
-- 文件存储：将本地 `server/data/uploads` 替换为腾讯云 COS、阿里 OSS 或七牛云。
+- 数据库：已支持 Neon Postgres。Vercel 生产环境配置 `BIKENGBAO_DB_PROVIDER=postgres` 和 `DATABASE_URL` 后启用。
+- 文件存储：已支持 Vercel Blob。Vercel 生产环境配置 `BIKENGBAO_FILE_STORAGE_PROVIDER=blob` 和 `BLOB_READ_WRITE_TOKEN` 后启用。
 - OCR：在 `server/adapters/ocr.py` 接入腾讯云、百度、阿里或火山 OCR。
 - AI：DeepSeek 已接入，部署平台配置 `BIKENGBAO_AI_PROVIDER=deepseek` 和 `DEEPSEEK_API_KEY` 后，报告会返回 `aiStatus=deepseek_ok`。
 - DeepSeek：密钥只放环境变量，不要写入代码、README 或小程序配置。
@@ -22,8 +22,8 @@
 ## 当前 Vercel 演示边界
 
 - 可以验证 Web 页面、API、DeepSeek、模拟支付、报告解锁、历史记录。
-- `/tmp` 数据会随 Serverless 实例回收，不适合作为正式数据库。
-- 推荐正式数据层：Vercel Postgres/Neon 存报告、订单和用户；阿里 OSS 或 Vercel Blob 存上传文件。
+- 数据库和对象存储接入后，线上数据不再依赖 `/tmp`。
+- Vercel Blob 当前使用不可猜测路径存储原始文件，接口不向前端返回 Blob URL。后续建议增加自动过期清理、上传前敏感信息脱敏和后台删除审计。
 - 小程序上线还缺微信小程序 AppID、微信支付商户号、隐私政策、用户协议和小程序后台域名白名单。
 
 ## 产品验证

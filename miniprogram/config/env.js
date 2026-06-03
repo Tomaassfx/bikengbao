@@ -1,3 +1,3 @@
 module.exports = {
-  API_BASE_URL: "http://127.0.0.1:8787"
+  API_BASE_URL: "https://bikengbao.lifeadmin-ai.xyz"
 };

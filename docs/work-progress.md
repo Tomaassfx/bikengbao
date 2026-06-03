@@ -27,6 +27,7 @@
   - 网络断开和超时给出可读错误
   - 提交前校验城市、面积、预算、资料内容
   - 删除历史报告前增加确认
+  - 小程序默认 API 地址已切到生产 HTTPS 域名，避免真机仍请求本地地址
 - 已完成后端健壮性补强：
   - 上传接口增加 `Content-Length` 大小限制
   - 默认最大上传体积为 12 MB，可通过 `BIKENGBAO_MAX_UPLOAD_BYTES` 配置
@@ -81,4 +82,5 @@
 - `styles.css`
 - `server/app.py`
 - `server/config.py`
+- `miniprogram/config/env.js`
 - `docs/work-progress.md`

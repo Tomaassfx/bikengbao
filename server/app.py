@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 from .adapters.file_storage import active_file_storage_provider, delete_upload, save_upload
 from .adapters.ocr import extract_text
 from .adapters.payment import create_payment
-from .config import AI_PROVIDER, HOST, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
+from .config import AI_PROVIDER, HOST, MAX_UPLOAD_BYTES, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
 from .rules import generate_report
 from .storage import active_db_provider, ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
 
@@ -126,6 +126,10 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self.send_error_json(400, "请使用 multipart/form-data 上传文件")
+            return
+        content_length = int(self.headers.get("Content-Length", "0") or "0")
+        if content_length > MAX_UPLOAD_BYTES:
+            self.send_error_json(413, "文件过大，请压缩后再上传")
             return
 
         form = cgi.FieldStorage(
@@ -252,7 +256,10 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         if length <= 0:
             return {}
         body = self.rfile.read(length).decode("utf-8")
-        return json.loads(body or "{}")
+        try:
+            return json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return {}
 
     def public_file(self, file_record: Dict[str, Any]) -> Dict[str, Any]:
         return {

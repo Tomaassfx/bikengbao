@@ -8,6 +8,7 @@ DB_PATH = DATA_DIR / "db.json"
 
 HOST = os.getenv("BIKENGBAO_HOST", "127.0.0.1")
 PORT = int(os.getenv("BIKENGBAO_PORT", "8787"))
+MAX_UPLOAD_BYTES = int(os.getenv("BIKENGBAO_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 DB_PROVIDER = os.getenv("BIKENGBAO_DB_PROVIDER", "postgres" if DATABASE_URL else "json")

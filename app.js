@@ -1,6 +1,15 @@
 const isLocalStaticPreview =
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) && window.location.port === "4173";
 const API_BASE_URL = window.BIKENGBAO_API_BASE_URL || (isLocalStaticPreview ? "http://127.0.0.1:8787" : window.location.origin);
+const REQUEST_TIMEOUT_MS = 30000;
+const PRICE_OPTIONS = [29, 59, 99];
+const REVIEW_STEPS = [
+  ["资料解析", "识别报价项、合同条款和用户补充文本"],
+  ["风险归类", "按报价、合同、增项和沟通风险拆解"],
+  ["行动建议", "生成追问清单、话术和家人版摘要"]
+];
+const SAMPLE_TEXT =
+  "合同约定签约付 70%，水电按实际发生结算，主材升级另计，材料以现场为准。拆除、垃圾清运、成品保护、管理费另计。延期赔付双方协商，防水闭水验收标准未列明。";
 
 const state = {
   activeView: "audit",
@@ -11,7 +20,9 @@ const state = {
   unlocked: false,
   selectedPrice: 59,
   isBusy: false,
+  busyLabel: "",
   toast: "",
+  errors: {},
   token: localStorage.getItem("bikengbao_token") || "",
   service: null,
   form: {
@@ -27,8 +38,9 @@ const state = {
   }
 };
 
-function setBusy(isBusy) {
+function setBusy(isBusy, label = "") {
   state.isBusy = isBusy;
+  state.busyLabel = label;
   render();
 }
 
@@ -43,17 +55,28 @@ function setToast(message) {
 }
 
 async function apiRequest(path, options = {}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeout || REQUEST_TIMEOUT_MS);
   const headers = {
     ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
     ...(options.headers || {})
   };
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.message || `请求失败：${response.status}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
+    const isJson = response.headers.get("content-type")?.includes("application/json");
+    const payload = isJson ? await response.json().catch(() => ({})) : {};
+    if (!response.ok) {
+      throw new Error(payload.message || `请求失败：${response.status}`);
+    }
+    return payload;
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("请求超时，请稍后再试。");
+    if (!navigator.onLine) throw new Error("当前网络不可用，请检查连接后重试。");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  return payload;
 }
 
 async function ensureAuth() {
@@ -101,8 +124,15 @@ async function uploadSelectedFiles() {
 }
 
 async function generateReport() {
+  const errors = validateAuditForm();
+  state.errors = errors;
+  if (Object.keys(errors).length) {
+    render();
+    setToast("请先补齐高亮字段。");
+    return;
+  }
   try {
-    setBusy(true);
+    setBusy(true, state.files.length ? "上传资料并生成报告中..." : "生成报告中...");
     await ensureAuth();
     const fileIds = await uploadSelectedFiles();
     const payload = await apiRequest("/v1/audits", {
@@ -124,7 +154,7 @@ async function generateReport() {
 async function unlockReport() {
   if (!state.report) return;
   try {
-    setBusy(true);
+    setBusy(true, "创建订单并解锁报告...");
     await ensureAuth();
     const orderPayload = await apiRequest("/v1/orders", {
       method: "POST",
@@ -146,8 +176,9 @@ async function unlockReport() {
 }
 
 async function deleteReport(id) {
+  if (!window.confirm("确定删除这份报告和关联资料吗？")) return;
   try {
-    setBusy(true);
+    setBusy(true, "删除报告和关联资料...");
     await apiRequest(`/v1/reports/${id}`, { method: "DELETE" });
     state.history = state.history.filter((report) => report.id !== id);
     if (state.report?.id === id) {
@@ -164,7 +195,7 @@ async function deleteReport(id) {
 
 async function loadReport(id) {
   try {
-    setBusy(true);
+    setBusy(true, "加载报告...");
     const payload = await apiRequest(`/v1/reports/${id}`);
     state.report = payload.report;
     state.unlocked = Boolean(payload.report.unlocked);
@@ -176,9 +207,48 @@ async function loadReport(id) {
   }
 }
 
+function validateAuditForm() {
+  const errors = {};
+  const area = Number(state.form.area);
+  const budget = Number(state.form.budget);
+  if (!state.form.city.trim()) errors.city = "请输入城市";
+  if (!Number.isFinite(area) || area <= 0) errors.area = "面积需大于 0";
+  if (!Number.isFinite(budget) || budget <= 0) errors.budget = "报价需大于 0";
+  if (!state.form.ocrText.trim() && !state.files.length) errors.ocrText = "请上传文件或粘贴报价合同内容";
+  return errors;
+}
+
 function money(value) {
   const num = Number(value || 0);
   return num.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function servicePill() {
+  const ok = state.service?.ok;
+  const db = state.service?.dbProvider || "unknown";
+  const fileStore = state.service?.fileStorageProvider || "unknown";
+  const ai = state.service?.aiProvider || "unknown";
+  return `
+    <div class="service-pill ${ok ? "online" : "offline"}" aria-label="服务状态">
+      <span></span>
+      <strong>${ok ? "线上服务正常" : "服务连接中"}</strong>
+      <small>${escapeHtml(ai)} · ${escapeHtml(db)} · ${escapeHtml(fileStore)}</small>
+    </div>
+  `;
+}
+
+function riskStats(report) {
+  const risks = report?.risks || [];
+  return ["高", "中", "低"].map((level) => ({
+    level,
+    count: risks.filter((risk) => risk.level === level).length
+  }));
 }
 
 function riskClass(level) {
@@ -244,6 +314,7 @@ function handleFileChange(event) {
 
 function updateForm(key, value) {
   state.form[key] = value;
+  if (state.errors[key]) delete state.errors[key];
 }
 
 function renderShell() {
@@ -265,6 +336,7 @@ function renderShell() {
     <main id="main" class="app-shell">
       ${renderCurrentView()}
     </main>
+    ${state.isBusy ? `<div class="busy-layer" role="status" aria-live="polite"><div>${icon("loader-circle")}<strong>${escapeHtml(state.busyLabel || "处理中...")}</strong><span>正在和服务端同步，请稍候</span></div></div>` : ""}
     ${state.toast ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
   `;
 }
@@ -285,10 +357,17 @@ function renderAudit() {
   return `
     <section class="workspace">
       <div class="audit-panel">
-        <div class="section-heading">
-          <span class="eyebrow">装修报价 / 合同审核</span>
-          <h1>上传报价单，先查清楚再付款</h1>
-          <p>第一版聚焦装修消费：识别报价虚高、漏项、增项、付款节点和合同模糊条款。</p>
+        <div class="hero-panel">
+          <div class="section-heading">
+            <span class="eyebrow">装修报价 / 合同审核</span>
+            <h1>上传报价单，先查清楚再付款</h1>
+            <p>把报价、合同和聊天承诺整理成可追问、可转发、可复查的风险报告。</p>
+          </div>
+          <div class="hero-insights" aria-label="审核能力摘要">
+            ${insightCard("预览生成", "约 1 分钟", "视文件大小和 AI 响应而定", "timer")}
+            ${insightCard("免费可看", "3 条", "先判断值不值得解锁", "badge-check")}
+            ${insightCard("报告闭环", "4 步", "上传、预览、解锁、复查", "route")}
+          </div>
         </div>
 
         <div class="upload-card">
@@ -301,7 +380,7 @@ function renderAudit() {
           <div class="file-list" aria-live="polite">
             ${
               state.files.length
-                ? state.files.map((file) => `<span>${icon("paperclip")}${escapeHtml(file.name)}</span>`).join("")
+                ? state.files.map((file) => `<span>${icon("paperclip")}<strong>${escapeHtml(file.name)}</strong><small>${formatBytes(file.size)}</small></span>`).join("")
                 : `<span>${icon("info")}可先用下方示例文本体验审核流程</span>`
             }
           </div>
@@ -317,10 +396,10 @@ function renderAudit() {
             ${fieldInput("budget", "报价总额 元", "128000", "number")}
           </div>
           ${fieldInput("vendor", "商家名称或备注", "某装修公司")}
-          <label class="field">
+          <label class="field ${state.errors.ocrText ? "field-error" : ""}">
             <span>OCR 识别文本 / 报价合同内容</span>
             <textarea name="ocrText" rows="8">${escapeHtml(state.form.ocrText)}</textarea>
-            <small>当前线上 API 已接真实报告生成接口；OCR 暂为占位，用户粘贴内容会参与审核。</small>
+            <small>${escapeHtml(state.errors.ocrText || "当前线上 API 已接真实报告生成接口；OCR 暂为占位，用户粘贴内容会参与审核。")}</small>
           </label>
           <div class="form-actions">
             <button class="primary-button" type="submit" ${state.isBusy ? "disabled" : ""}>${icon("scan-search")}${state.isBusy ? "处理中..." : "生成免费预览"}</button>
@@ -329,11 +408,18 @@ function renderAudit() {
         </form>
       </div>
       <aside class="side-panel" aria-label="产品验证指标">
+        ${servicePill()}
+        <div class="process-panel">
+          <h2>审核路径</h2>
+          <div class="step-list">
+            ${REVIEW_STEPS.map(([title, detail], index) => `<div class="step-item"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></div>`).join("")}
+          </div>
+        </div>
         <div class="metric-board">
           <h2>服务状态</h2>
           ${metric(state.service?.ok ? "后端可用" : "后端异常", state.service?.ok ? "在线" : "离线", aiLabel)}
-          ${metric("当前闭环", "API 驱动", "报告、订单、历史均来自服务端")}
-          ${metric("支付模式", "Mock", "V1 验证不真实扣款")}
+          ${metric("数据库", state.service?.dbProvider || "检测中", "报告、订单、历史持久化")}
+          ${metric("对象存储", state.service?.fileStorageProvider || "检测中", "原始文件不依赖临时目录")}
         </div>
         <div class="principles">
           <h2>第一版边界</h2>
@@ -349,11 +435,16 @@ function renderAudit() {
   `;
 }
 
+function insightCard(label, value, detail, iconName) {
+  return `<div class="insight-card">${icon(iconName)}<span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></div>`;
+}
+
 function fieldInput(name, label, placeholder, type = "text") {
   return `
-    <label class="field">
+    <label class="field ${state.errors[name] ? "field-error" : ""}">
       <span>${label}</span>
       <input name="${name}" type="${type}" value="${escapeHtml(state.form[name])}" placeholder="${escapeHtml(placeholder)}" />
+      ${state.errors[name] ? `<small>${escapeHtml(state.errors[name])}</small>` : ""}
     </label>
   `;
 }
@@ -386,6 +477,7 @@ function renderReport() {
   }
   const report = state.report;
   const visibleRisks = report.risks || [];
+  const stats = riskStats(report);
   return `
     <section class="report-layout">
       <div class="report-main">
@@ -399,6 +491,13 @@ function renderReport() {
             <strong>${escapeHtml(report.score)}</strong>
             <span>风险评分</span>
           </div>
+        </div>
+
+        <div class="risk-radar" aria-label="风险分布">
+          ${stats.map((item) => {
+            const width = Math.min(100, Math.max(12, item.count * 22));
+            return `<div class="radar-item ${riskClass(item.level)}"><span>${escapeHtml(item.level)}风险</span><strong>${item.count}</strong><i style="--w:${width}%"></i></div>`;
+          }).join("")}
         </div>
 
         <div class="summary-strip">
@@ -492,7 +591,7 @@ function renderPaywall(report) {
         <p>查看全部风险、报价概览、追问清单、砍价话术和家人版总结。</p>
       </div>
       <div class="price-options" role="radiogroup" aria-label="报告价格">
-        ${[29, 59, 99].map((price) => `<button class="price-chip ${state.selectedPrice === price ? "selected" : ""}" type="button" data-price="${price}" aria-pressed="${state.selectedPrice === price}">${price} 元</button>`).join("")}
+        ${PRICE_OPTIONS.map((price) => `<button class="price-chip ${state.selectedPrice === price ? "selected" : ""}" type="button" data-price="${price}" aria-pressed="${state.selectedPrice === price}">${price} 元</button>`).join("")}
       </div>
       <button class="primary-button" type="button" data-action="unlock" ${state.isBusy ? "disabled" : ""}>${icon("wallet")}${state.isBusy ? "处理中..." : "模拟支付并解锁"}</button>
       <small>当前为验证原型，不会发起真实扣款。报告 ID：${escapeHtml(report.id)}</small>
@@ -567,9 +666,9 @@ function bindEvents() {
       stage: "准备签合同",
       budget: "186000",
       vendor: "星禾装饰",
-      ocrText:
-        "合同约定签约付 70%，水电按实际发生结算，主材升级另计，材料以现场为准。拆除、垃圾清运、成品保护、管理费另计。延期赔付双方协商，防水闭水验收标准未列明。"
+      ocrText: SAMPLE_TEXT
     };
+    state.errors = {};
     render();
     setToast("已填入高风险样例。");
   });

@@ -22,7 +22,9 @@ Vercel 部署后默认同源访问：
   "service": "bikengbao-api",
   "aiProvider": "deepseek",
   "ocrProvider": "mock",
-  "paymentProvider": "mock"
+  "paymentProvider": "mock",
+  "dbProvider": "postgres",
+  "fileStorageProvider": "blob"
 }
 ```
 

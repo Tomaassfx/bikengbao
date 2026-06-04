@@ -237,7 +237,7 @@ function servicePill() {
   return `
     <div class="service-pill ${ok ? "online" : "offline"}" aria-label="服务状态">
       <span></span>
-      <strong>${ok ? "线上服务正常" : "服务连接中"}</strong>
+      <strong>${ok ? "审查服务在线" : "服务连接中"}</strong>
       <small>${escapeHtml(ai)} · ${escapeHtml(db)} · ${escapeHtml(fileStore)}</small>
     </div>
   `;
@@ -324,7 +324,7 @@ function renderShell() {
         <span class="brand-mark">${icon("shield-check")}</span>
         <span>
           <strong>避坑宝</strong>
-          <small>花钱前审一审</small>
+          <small>大额消费付款前审查</small>
         </span>
       </div>
       <nav class="nav" aria-label="主要导航">
@@ -336,8 +336,23 @@ function renderShell() {
     <main id="main" class="app-shell">
       ${renderCurrentView()}
     </main>
-    ${state.isBusy ? `<div class="busy-layer" role="status" aria-live="polite"><div>${icon("loader-circle")}<strong>${escapeHtml(state.busyLabel || "处理中...")}</strong><span>正在和服务端同步，请稍候</span></div></div>` : ""}
+    ${state.isBusy ? renderBusyLayer() : ""}
     ${state.toast ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
+  `;
+}
+
+function renderBusyLayer() {
+  return `
+    <div class="busy-layer" role="status" aria-live="polite">
+      <div>
+        <div class="review-beacon">${icon("scan-search")}</div>
+        <strong>${escapeHtml(state.busyLabel || "处理中...")}</strong>
+        <span>正在校验资料、生成风险摘要和追问清单</span>
+        <div class="busy-checks" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -358,23 +373,43 @@ function renderAudit() {
     <section class="workspace">
       <div class="audit-panel">
         <div class="hero-panel">
-          <div class="section-heading">
+          <div class="hero-copy">
             <span class="eyebrow">装修报价 / 合同审核</span>
-            <h1>上传报价单，先查清楚再付款</h1>
-            <p>把报价、合同和聊天承诺整理成可追问、可转发、可复查的风险报告。</p>
+            <h1>把付款前的装修疑点，整理成一份能追问的审查单</h1>
+            <p>上传报价、合同或聊天承诺，避坑宝会拆出异常报价、模糊条款、增项入口和可直接发给商家的沟通话术。</p>
+            <div class="hero-actions">
+              <button class="primary-button" type="button" data-action="focus-upload">${icon("upload-cloud")}开始审查</button>
+              <button class="ghost-button" type="button" data-action="sample">${icon("wand-sparkles")}看高风险样例</button>
+            </div>
+          </div>
+          <div class="review-desk" aria-label="审核台摘要">
+            <div class="desk-header">
+              <span>付款前审查单</span>
+              <strong>待确认 12 项</strong>
+            </div>
+            <div class="desk-score">
+              <strong>59</strong>
+              <span>风险预估</span>
+            </div>
+            <div class="desk-lines">
+              <span><i></i>付款节点偏前</span>
+              <span><i></i>主材标准不清</span>
+              <span><i></i>水电增项入口</span>
+            </div>
+            <small>免费预览先给 3 条明显风险，完整报告解锁全部细项。</small>
           </div>
           <div class="hero-insights" aria-label="审核能力摘要">
-            ${insightCard("预览生成", "约 1 分钟", "视文件大小和 AI 响应而定", "timer")}
-            ${insightCard("免费可看", "3 条", "先判断值不值得解锁", "badge-check")}
-            ${insightCard("报告闭环", "4 步", "上传、预览、解锁、复查", "route")}
+            ${insightCard("生成预览", "约 1 分钟", "视文件大小和 AI 响应而定", "timer")}
+            ${insightCard("免费可看", "3 条", "先判断报告是否值得解锁", "badge-check")}
+            ${insightCard("闭环动作", "追问 + 复查", "把风险转成可执行问题", "route")}
           </div>
         </div>
 
         <div class="upload-card">
           <label class="dropzone" for="fileInput">
             ${icon("upload-cloud")}
-            <strong>上传图片、PDF 或聊天截图</strong>
-            <span>支持报价单照片、合同截图、户型图、商家聊天记录</span>
+            <strong>把资料放到审查台</strong>
+            <span>支持报价单照片、合同截图、PDF、户型图、商家聊天记录</span>
             <input id="fileInput" type="file" multiple accept="image/*,.pdf,.txt" />
           </label>
           <div class="file-list" aria-live="polite">
@@ -410,13 +445,13 @@ function renderAudit() {
       <aside class="side-panel" aria-label="产品验证指标">
         ${servicePill()}
         <div class="process-panel">
-          <h2>审核路径</h2>
+          <h2>审查路径</h2>
           <div class="step-list">
             ${REVIEW_STEPS.map(([title, detail], index) => `<div class="step-item"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></div>`).join("")}
           </div>
         </div>
         <div class="metric-board">
-          <h2>服务状态</h2>
+          <h2>上线状态</h2>
           ${metric(state.service?.ok ? "后端可用" : "后端异常", state.service?.ok ? "在线" : "离线", aiLabel)}
           ${metric("数据库", state.service?.dbProvider || "检测中", "报告、订单、历史持久化")}
           ${metric("对象存储", state.service?.fileStorageProvider || "检测中", "原始文件不依赖临时目录")}
@@ -551,6 +586,10 @@ function renderReport() {
         }
       </div>
       <aside class="report-actions">
+        <div class="action-note">
+          <strong>本次报告</strong>
+          <span>${state.unlocked ? "完整报告已解锁" : "当前为免费预览"}</span>
+        </div>
         <button class="primary-button" type="button" data-action="download" ${state.unlocked ? "" : "disabled"}>${icon("download")}下载报告</button>
         <button class="ghost-button" type="button" data-view="audit">${icon("plus")}再审一份</button>
         <button class="ghost-button" type="button" data-view="history">${icon("clock")}查看历史</button>
@@ -657,20 +696,27 @@ function bindEvents() {
     });
   }
 
-  document.querySelector("[data-action='sample']")?.addEventListener("click", () => {
-    state.form = {
-      docType: "合同",
-      city: "杭州",
-      area: "112",
-      homeType: "新房装修",
-      stage: "准备签合同",
-      budget: "186000",
-      vendor: "星禾装饰",
-      ocrText: SAMPLE_TEXT
-    };
-    state.errors = {};
-    render();
-    setToast("已填入高风险样例。");
+  document.querySelectorAll("[data-action='sample']").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.form = {
+        docType: "合同",
+        city: "杭州",
+        area: "112",
+        homeType: "新房装修",
+        stage: "准备签合同",
+        budget: "186000",
+        vendor: "星禾装饰",
+        ocrText: SAMPLE_TEXT
+      };
+      state.errors = {};
+      render();
+      setToast("已填入高风险样例。");
+    });
+  });
+
+  document.querySelector("[data-action='focus-upload']")?.addEventListener("click", () => {
+    document.querySelector("#fileInput")?.focus();
+    document.querySelector(".upload-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
   document.querySelectorAll("[data-price]").forEach((button) => {

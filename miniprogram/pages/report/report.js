@@ -75,11 +75,12 @@ Page({
         });
       } else {
         await this.requestPayment(order.payment.params);
+        await this.waitForUnlock();
       }
 
       const refreshed = await api.request({ url: `/v1/reports/${this.data.reportId}` });
       this.applyReport(refreshed.report);
-      wx.showToast({ title: "已解锁完整报告", icon: "success" });
+      wx.showToast({ title: refreshed.report.unlocked ? "已解锁完整报告" : "支付确认中", icon: refreshed.report.unlocked ? "success" : "none" });
     } catch (error) {
       wx.showToast({ title: error.message || "支付失败", icon: "none" });
     } finally {
@@ -95,6 +96,17 @@ Page({
         fail: reject
       });
     });
+  },
+
+  async waitForUnlock() {
+    for (let index = 0; index < 6; index += 1) {
+      const result = await api.request({ url: `/v1/reports/${this.data.reportId}` });
+      if (result.report && result.report.unlocked) {
+        this.applyReport(result.report);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
   },
 
   copyText(event) {

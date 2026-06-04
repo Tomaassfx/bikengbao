@@ -8,8 +8,9 @@ from urllib.parse import parse_qs, urlparse
 
 from .adapters.file_storage import active_file_storage_provider, delete_upload, save_upload
 from .adapters.ocr import extract_text
-from .adapters.payment import create_payment
-from .config import AI_PROVIDER, HOST, MAX_UPLOAD_BYTES, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
+from .adapters.payment import create_payment, parse_wechat_notification
+from .adapters.wechat_auth import resolve_wechat_session
+from .config import AI_PROVIDER, AUTH_PROVIDER, HOST, MAX_UPLOAD_BYTES, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
 from .rules import generate_report
 from .storage import active_db_provider, ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
 
@@ -30,6 +31,7 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
                     "ok": True,
                     "service": "bikengbao-api",
                     "aiProvider": AI_PROVIDER,
+                    "authProvider": AUTH_PROVIDER,
                     "ocrProvider": OCR_PROVIDER,
                     "paymentProvider": PAYMENT_PROVIDER,
                     "dbProvider": active_db_provider(),
@@ -75,6 +77,10 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             self.handle_create_order(user_id)
             return
 
+        if route == "/v1/payments/wechat/notify":
+            self.handle_wechat_pay_notify()
+            return
+
         order_match = re.fullmatch(r"/v1/orders/([^/]+)/mock-pay", route)
         if order_match:
             self.handle_mock_pay(user_id, order_match.group(1))
@@ -110,12 +116,20 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
     def handle_auth(self) -> None:
         payload = self.read_json()
         code = payload.get("code", "")
-        user_id = DEFAULT_USER_ID if not code else f"wx_{abs(hash(code)) % 100000000}"
+        try:
+            session = resolve_wechat_session(code)
+        except RuntimeError as error:
+            self.send_error_json(502, str(error))
+            return
+        user_id = session["userId"]
         token = f"demo-token-{user_id}"
         db = load_db()
         db["users"][user_id] = {
             "id": user_id,
             "nickname": "避坑宝用户",
+            "openid": session.get("openid", ""),
+            "unionid": session.get("unionid", ""),
+            "authProvider": session.get("provider", "mock"),
             "createdAt": db["users"].get(user_id, {}).get("createdAt") or now_text(),
             "lastLoginAt": now_text(),
         }
@@ -165,7 +179,12 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             "deleted": False,
             **storage_record,
         }
-        file_record["ocrText"] = extract_text(file_record)
+        try:
+            file_record["ocrText"] = extract_text(file_record)
+        except RuntimeError as error:
+            delete_upload(file_record)
+            self.send_error_json(502, str(error))
+            return
 
         db = load_db()
         db["files"][file_id] = file_record
@@ -207,15 +226,26 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             "amount": amount,
             "status": "pending",
             "createdAt": now_text(),
+            "createdAtMs": now_ms(),
             "paidAt": "",
+            "openid": db["users"].get(user_id, {}).get("openid", ""),
+            "provider": PAYMENT_PROVIDER,
         }
-        payment = create_payment(order)
+        try:
+            payment = create_payment(order)
+        except RuntimeError as error:
+            self.send_error_json(502, str(error))
+            return
         order["paymentId"] = payment.get("paymentId", "")
         db["orders"][order["id"]] = order
         save_db(db)
         self.send_json({"order": order, "payment": payment}, status=201)
 
     def handle_mock_pay(self, user_id: str, order_id: str) -> None:
+        if PAYMENT_PROVIDER != "mock":
+            self.send_error_json(403, "当前环境不允许模拟支付")
+            return
+
         db = load_db()
         order = db["orders"].get(order_id)
         if not order or order.get("userId") != user_id:
@@ -237,6 +267,41 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         save_db(db)
         self.send_json({"order": order, "report": self.public_report(report)})
 
+    def handle_wechat_pay_notify(self) -> None:
+        raw_body = self.read_raw_body()
+        try:
+            transaction = parse_wechat_notification(self.headers, raw_body)
+        except Exception as error:
+            self.send_json({"code": "FAIL", "message": str(error)}, status=400)
+            return
+
+        order_id = transaction.get("out_trade_no", "")
+        trade_state = transaction.get("trade_state", "")
+        db = load_db()
+        order = db["orders"].get(order_id)
+        if not order:
+            self.send_json({"code": "FAIL", "message": "订单不存在"}, status=404)
+            return
+        if trade_state != "SUCCESS":
+            order["status"] = "failed"
+            order["paymentError"] = trade_state or "UNKNOWN"
+            save_db(db)
+            self.send_json({"code": "SUCCESS", "message": "忽略非成功支付"})
+            return
+
+        report = db["reports"].get(order["reportId"])
+        if not report:
+            self.send_json({"code": "FAIL", "message": "报告不存在"}, status=404)
+            return
+
+        order["status"] = "paid"
+        order["paidAt"] = now_text()
+        order["transactionId"] = transaction.get("transaction_id", "")
+        report["unlocked"] = True
+        report["unlockedAt"] = now_text()
+        save_db(db)
+        self.send_json({"code": "SUCCESS", "message": "成功"})
+
     def route(self) -> Tuple[str, Dict[str, Any]]:
         parsed = urlparse(self.path)
         return parsed.path.rstrip("/") or "/", parse_qs(parsed.query)
@@ -252,14 +317,17 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         return DEFAULT_USER_ID
 
     def read_json(self) -> Dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        if length <= 0:
-            return {}
-        body = self.rfile.read(length).decode("utf-8")
+        body = self.read_raw_body().decode("utf-8")
         try:
             return json.loads(body or "{}")
         except json.JSONDecodeError:
             return {}
+
+    def read_raw_body(self) -> bytes:
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0:
+            return b""
+        return self.rfile.read(length)
 
     def public_file(self, file_record: Dict[str, Any]) -> Dict[str, Any]:
         return {

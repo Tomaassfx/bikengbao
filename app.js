@@ -160,6 +160,10 @@ async function unlockReport() {
       method: "POST",
       body: JSON.stringify({ reportId: state.report.id, amount: state.selectedPrice })
     });
+    if (orderPayload.payment?.mode !== "mock") {
+      setToast("已创建微信支付订单，请在小程序内完成支付。");
+      return;
+    }
     const paidPayload = await apiRequest(`/v1/orders/${orderPayload.order.id}/mock-pay`, {
       method: "POST",
       body: JSON.stringify({})

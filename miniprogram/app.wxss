@@ -1,7 +1,9 @@
 page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #fbfaf6 0%, #eef4f2 54%, #f8f5ef 100%);
-  color: #172026;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(10, 118, 107, 0.12), transparent 520rpx),
+    linear-gradient(180deg, #fbfcf9 0%, #eff4f1 54%, #f8f7f0 100%);
+  color: #172322;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 28rpx;
 }
@@ -37,29 +39,29 @@ button::after {
 
 .h1 {
   margin-top: 12rpx;
-  color: #172026;
+  color: #172322;
   font-size: 52rpx;
   font-weight: 800;
   line-height: 1.16;
 }
 
 .h2 {
-  color: #172026;
+  color: #172322;
   font-size: 34rpx;
   font-weight: 800;
   line-height: 1.25;
 }
 
 .muted {
-  color: #65717a;
+  color: #687774;
   line-height: 1.65;
 }
 
 .card {
-  border: 1rpx solid #dbe4df;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18rpx 42rpx rgba(23, 32, 38, 0.08);
+  border: 1rpx solid #dce3dd;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18rpx 42rpx rgba(19, 34, 32, 0.08);
 }
 
 .primary-btn {
@@ -67,7 +69,7 @@ button::after {
   min-height: 88rpx;
   align-items: center;
   justify-content: center;
-  background: #0f766e;
+  background: linear-gradient(180deg, #11877b, #074e49);
   color: #ffffff;
   font-size: 30rpx;
   font-weight: 700;
@@ -79,9 +81,9 @@ button::after {
   min-height: 88rpx;
   align-items: center;
   justify-content: center;
-  border: 1rpx solid #dbe4df;
+  border: 1rpx solid #dce3dd;
   background: #ffffff;
-  color: #172026;
+  color: #172322;
   font-size: 30rpx;
   font-weight: 700;
 }

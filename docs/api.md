@@ -10,6 +10,7 @@ Vercel 部署后默认同源访问：
 - `POST /v1/audits`
 - `POST /v1/orders`
 - `POST /v1/orders/{orderId}/mock-pay`
+- `POST /v1/payments/wechat/notify`
 - `GET /v1/reports`
 - `GET /v1/reports/{reportId}`
 - `DELETE /v1/reports/{reportId}`
@@ -20,9 +21,10 @@ Vercel 部署后默认同源访问：
 {
   "ok": true,
   "service": "bikengbao-api",
+  "authProvider": "wechat",
   "aiProvider": "deepseek",
-  "ocrProvider": "mock",
-  "paymentProvider": "mock",
+  "ocrProvider": "tencent",
+  "paymentProvider": "wechat",
   "dbProvider": "postgres",
   "fileStorageProvider": "blob"
 }
@@ -48,6 +50,12 @@ Vercel 部署后默认同源访问：
   "user": { "id": "wx_xxx", "nickname": "避坑宝用户" }
 }
 ```
+
+正式微信登录启用条件：
+
+- `BIKENGBAO_AUTH_PROVIDER=wechat`
+- `WECHAT_APP_ID`
+- `WECHAT_APP_SECRET`
 
 后续请求 Header：
 
@@ -145,4 +153,29 @@ Authorization: Bearer demo-token-wx_xxx
 
 `POST /v1/orders/{orderId}/mock-pay`
 
-正式上线时，将 `server/adapters/payment.py` 替换为微信支付参数生成和回调验签。
+仅当 `BIKENGBAO_PAYMENT_PROVIDER=mock` 时允许调用。正式支付环境会拒绝该接口，避免绕过真实支付。
+
+微信支付回调：
+
+`POST /v1/payments/wechat/notify`
+
+正式上线需要配置：
+
+- `BIKENGBAO_PAYMENT_PROVIDER=wechat`
+- `WECHAT_APP_ID`
+- `WECHAT_MCH_ID`
+- `WECHAT_PAY_SERIAL_NO`
+- `WECHAT_PAY_PRIVATE_KEY` 或 `WECHAT_PAY_PRIVATE_KEY_PATH`
+- `WECHAT_PAY_API_V3_KEY`
+- `WECHAT_PAY_PLATFORM_CERT` 或 `WECHAT_PAY_PLATFORM_CERT_PATH`
+- `WECHAT_PAY_NOTIFY_URL`
+
+## OCR
+
+腾讯云 OCR 启用条件：
+
+- `BIKENGBAO_OCR_PROVIDER=tencent`
+- `TENCENT_SECRET_ID`
+- `TENCENT_SECRET_KEY`
+- `TENCENT_OCR_REGION`
+- `TENCENT_OCR_ACTION`

@@ -3,6 +3,71 @@
   flex-direction: column;
   gap: 14rpx;
   margin-bottom: 28rpx;
+  overflow: hidden;
+  border: 1rpx solid #c7d4cc;
+  border-radius: 28rpx;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(10, 118, 107, 0.16), transparent 280rpx),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 247, 0.92));
+  padding: 34rpx;
+  box-shadow: 0 22rpx 52rpx rgba(19, 34, 32, 0.1);
+}
+
+.hero .h1 {
+  font-size: 56rpx;
+}
+
+.audit-brief {
+  display: grid;
+  grid-template-columns: 164rpx 1fr;
+  gap: 20rpx;
+  margin-top: 18rpx;
+  border-radius: 22rpx;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(241, 193, 95, 0.16), transparent 220rpx),
+    linear-gradient(180deg, #152522, #0e1817);
+  padding: 22rpx;
+}
+
+.brief-score {
+  display: flex;
+  width: 144rpx;
+  height: 144rpx;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 12rpx solid rgba(241, 193, 95, 0.24);
+  border-top-color: #f1c15f;
+  border-radius: 20rpx;
+}
+
+.brief-score text:first-child {
+  color: #ffffff;
+  font-size: 46rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.brief-score text:last-child {
+  margin-top: 8rpx;
+  color: #cbd6d4;
+  font-size: 22rpx;
+}
+
+.brief-list {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.brief-list text {
+  border: 1rpx solid rgba(255, 255, 255, 0.11);
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef5f2;
+  padding: 12rpx 16rpx;
+  font-size: 25rpx;
 }
 
 .upload {
@@ -13,7 +78,9 @@
   flex-direction: column;
   gap: 14rpx;
   border-style: dashed;
-  background: #f6fbf9;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(227, 241, 237, 0.44)),
+    #f6fbf9;
   padding: 34rpx;
   text-align: center;
 }
@@ -24,15 +91,15 @@
   height: 76rpx;
   align-items: center;
   justify-content: center;
-  border-radius: 16rpx;
-  background: #0f766e;
+  border-radius: 18rpx;
+  background: linear-gradient(180deg, #11877b, #074e49);
   color: #ffffff;
   font-size: 52rpx;
   font-weight: 300;
 }
 
 .upload-title {
-  color: #172026;
+  color: #172322;
   font-size: 32rpx;
   font-weight: 800;
 }
@@ -48,8 +115,8 @@
   display: flex;
   justify-content: space-between;
   gap: 16rpx;
-  border-radius: 14rpx;
-  background: #eef3ef;
+  border-radius: 18rpx;
+  background: #e3f1ed;
   padding: 16rpx 18rpx;
 }
 
@@ -85,9 +152,9 @@ textarea,
   width: 100%;
   min-height: 88rpx;
   border: 1rpx solid #cfdad5;
-  border-radius: 16rpx;
+  border-radius: 18rpx;
   background: #ffffff;
-  color: #172026;
+  color: #172322;
   padding: 22rpx;
 }
 
@@ -117,13 +184,19 @@ textarea {
   min-height: 132rpx;
   justify-content: center;
   flex-direction: column;
-  border-radius: 14rpx;
+  border-radius: 18rpx;
   background: #f6f8f4;
   padding: 16rpx;
 }
 
 .metric-value {
-  color: #6d4b7f;
+  color: #074e49;
   font-size: 34rpx;
   font-weight: 800;
+}
+
+@media (max-width: 360px) {
+  .audit-brief {
+    grid-template-columns: 1fr;
+  }
 }

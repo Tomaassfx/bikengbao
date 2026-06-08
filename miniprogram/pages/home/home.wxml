@@ -1,8 +1,19 @@
 <view class="page home-page">
   <view class="hero">
     <text class="eyebrow">装修报价 / 合同审核</text>
-    <text class="h1">上传报价单，先查清楚再付款</text>
-    <text class="muted">识别报价虚高、漏项、增项、付款节点和合同模糊条款。</text>
+    <text class="h1">付款前，把装修疑点查清楚</text>
+    <text class="muted">识别报价虚高、漏项、增项入口和合同模糊条款。</text>
+    <view class="audit-brief">
+      <view class="brief-score">
+        <text>59</text>
+        <text>风险评分</text>
+      </view>
+      <view class="brief-list">
+        <text>付款节点偏前</text>
+        <text>主材标准不清</text>
+        <text>水电增项入口</text>
+      </view>
+    </view>
   </view>
 
   <view class="upload card" bindtap="chooseFiles">
@@ -74,11 +85,11 @@
   </view>
 
   <view class="metrics card">
-    <text class="h2">V1 验证指标</text>
+    <text class="h2">审核闭环</text>
     <view class="metric-row">
-      <view><text class="metric-value">≥10%</text><text class="muted">上传转化</text></view>
-      <view><text class="metric-value">≥8%</text><text class="muted">付费转化</text></view>
-      <view><text class="metric-value">≥29元</text><text class="muted">单次付费</text></view>
+      <view><text class="metric-value">预览</text><text class="muted">先看 3 条风险</text></view>
+      <view><text class="metric-value">报告</text><text class="muted">解锁完整清单</text></view>
+      <view><text class="metric-value">复查</text><text class="muted">商家回复后再审</text></view>
     </view>
   </view>
 </view>

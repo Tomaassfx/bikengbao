@@ -21,12 +21,15 @@
   gap: 20rpx;
   margin-bottom: 18rpx;
   padding: 24rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 247, 0.92)),
+    #ffffff;
 }
 
 .title {
   display: block;
   margin: 10rpx 0;
-  color: #172026;
+  color: #172322;
   font-size: 32rpx;
   font-weight: 800;
   line-height: 1.35;

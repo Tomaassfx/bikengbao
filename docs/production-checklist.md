@@ -4,16 +4,16 @@
 
 - 数据库：已支持 Neon Postgres。Vercel 生产环境配置 `BIKENGBAO_DB_PROVIDER=postgres` 和 `DATABASE_URL` 后启用。
 - 文件存储：已支持 Vercel Blob。Vercel 生产环境配置 `BIKENGBAO_FILE_STORAGE_PROVIDER=blob` 和 `BLOB_READ_WRITE_TOKEN` 后启用。
-- OCR：在 `server/adapters/ocr.py` 接入腾讯云、百度、阿里或火山 OCR。
+- OCR：已补腾讯云 OCR 框架。生产环境配置 `BIKENGBAO_OCR_PROVIDER=tencent`、`TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY` 后启用。
 - AI：DeepSeek 已接入，部署平台配置 `BIKENGBAO_AI_PROVIDER=deepseek` 和 `DEEPSEEK_API_KEY` 后，报告会返回 `aiStatus=deepseek_ok`。
 - DeepSeek：密钥只放环境变量，不要写入代码、README 或小程序配置。
-- 支付：在 `server/adapters/payment.py` 接入微信支付 JSAPI，并增加支付回调验签。
-- 登录：将模拟 token 替换为微信 `code2session` 和服务端 session/JWT。
+- 支付：已补微信支付 JSAPI 下单、支付参数生成、回调验签/解密框架。生产环境需配置微信商户号、私钥、平台证书和 API v3 key。
+- 登录：已补微信 `code2session` 框架。生产环境配置 `BIKENGBAO_AUTH_PROVIDER=wechat`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET` 后启用。
 - 域名：Web 后端必须部署到 HTTPS；微信小程序上线时，还要将该域名加入 request/uploadFile 合法域名。
 
 ## 合规与安全
 
-- 隐私政策、用户协议、免责声明。
+- 隐私政策、用户协议、免责声明已补静态页面骨架，正式上线前需填真实主体和联系方式。
 - 上传文件加密存储，敏感信息脱敏。
 - 用户删除报告时同步删除对象存储文件。
 - 后端接口鉴权、限流、防刷、防重复支付。

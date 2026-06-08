@@ -5,7 +5,7 @@ const REQUEST_TIMEOUT_MS = 30000;
 const PRICE_OPTIONS = [29, 59, 99];
 const REVIEW_STEPS = [
   ["资料解析", "识别报价项、合同条款和用户补充文本"],
-  ["风险归类", "按报价、合同、增项和沟通风险拆解"],
+  ["风险归类", "拆出报价、合同、增项和沟通风险"],
   ["行动建议", "生成追问清单、话术和家人版摘要"]
 ];
 const SAMPLE_TEXT =
@@ -242,7 +242,7 @@ function servicePill() {
     <div class="service-pill ${ok ? "online" : "offline"}" aria-label="服务状态">
       <span></span>
       <strong>${ok ? "审查服务在线" : "服务连接中"}</strong>
-      <small>${escapeHtml(ai)} · ${escapeHtml(db)} · ${escapeHtml(fileStore)}</small>
+      <small>${escapeHtml(ai)} / ${escapeHtml(db)} / ${escapeHtml(fileStore)}</small>
     </div>
   `;
 }
@@ -376,11 +376,11 @@ function renderAudit() {
   return `
     <section class="workspace">
       <div class="audit-panel">
-        <div class="hero-panel">
+        <div class="hero-panel" aria-label="付款前审查工作台">
           <div class="hero-copy">
             <span class="eyebrow">装修报价 / 合同审核</span>
-            <h1>把付款前的装修疑点，整理成一份能追问的审查单</h1>
-            <p>上传报价、合同或聊天承诺，避坑宝会拆出异常报价、模糊条款、增项入口和可直接发给商家的沟通话术。</p>
+            <h1>付款前，把装修疑点查清楚</h1>
+            <p>上传报价、合同或聊天承诺，拆出异常报价、模糊条款和可追问话术。</p>
             <div class="hero-actions">
               <button class="primary-button" type="button" data-action="focus-upload">${icon("upload-cloud")}开始审查</button>
               <button class="ghost-button" type="button" data-action="sample">${icon("wand-sparkles")}看高风险样例</button>
@@ -393,7 +393,7 @@ function renderAudit() {
             </div>
             <div class="desk-score">
               <strong>59</strong>
-              <span>风险预估</span>
+              <span>风险评分</span>
             </div>
             <div class="desk-lines">
               <span><i></i>付款节点偏前</span>
@@ -405,7 +405,7 @@ function renderAudit() {
           <div class="hero-insights" aria-label="审核能力摘要">
             ${insightCard("生成预览", "约 1 分钟", "视文件大小和 AI 响应而定", "timer")}
             ${insightCard("免费可看", "3 条", "先判断报告是否值得解锁", "badge-check")}
-            ${insightCard("闭环动作", "追问 + 复查", "把风险转成可执行问题", "route")}
+            ${insightCard("闭环动作", "追问清单", "把风险转成可执行问题", "route")}
           </div>
         </div>
 
@@ -438,7 +438,7 @@ function renderAudit() {
           <label class="field ${state.errors.ocrText ? "field-error" : ""}">
             <span>OCR 识别文本 / 报价合同内容</span>
             <textarea name="ocrText" rows="8">${escapeHtml(state.form.ocrText)}</textarea>
-            <small>${escapeHtml(state.errors.ocrText || "当前线上 API 已接真实报告生成接口；OCR 暂为占位，用户粘贴内容会参与审核。")}</small>
+            <small>${escapeHtml(state.errors.ocrText || "上传文件会自动识别；也可以先粘贴报价或合同内容体验审核。")}</small>
           </label>
           <div class="form-actions">
             <button class="primary-button" type="submit" ${state.isBusy ? "disabled" : ""}>${icon("scan-search")}${state.isBusy ? "处理中..." : "生成免费预览"}</button>
@@ -461,7 +461,7 @@ function renderAudit() {
           ${metric("对象存储", state.service?.fileStorageProvider || "检测中", "原始文件不依赖临时目录")}
         </div>
         <div class="principles">
-          <h2>第一版边界</h2>
+          <h2>信任边界</h2>
           <ul>
             <li>不推荐装修公司，不接广告。</li>
             <li>不输出法律结论，只做消费风险提示。</li>
@@ -627,6 +627,11 @@ function renderRisk(risk) {
 }
 
 function renderPaywall(report) {
+  const isMockPayment = state.service?.paymentProvider !== "wechat";
+  const unlockLabel = isMockPayment ? "模拟支付并解锁" : "创建微信支付订单";
+  const paymentNote = isMockPayment
+    ? `当前为验证环境，不会发起真实扣款。报告 ID：${report.id}`
+    : `将在微信小程序内完成支付确认。报告 ID：${report.id}`;
   return `
     <div class="paywall">
       <div>
@@ -636,8 +641,8 @@ function renderPaywall(report) {
       <div class="price-options" role="radiogroup" aria-label="报告价格">
         ${PRICE_OPTIONS.map((price) => `<button class="price-chip ${state.selectedPrice === price ? "selected" : ""}" type="button" data-price="${price}" aria-pressed="${state.selectedPrice === price}">${price} 元</button>`).join("")}
       </div>
-      <button class="primary-button" type="button" data-action="unlock" ${state.isBusy ? "disabled" : ""}>${icon("wallet")}${state.isBusy ? "处理中..." : "模拟支付并解锁"}</button>
-      <small>当前为验证原型，不会发起真实扣款。报告 ID：${escapeHtml(report.id)}</small>
+      <button class="primary-button" type="button" data-action="unlock" ${state.isBusy ? "disabled" : ""}>${icon("wallet")}${state.isBusy ? "处理中..." : unlockLabel}</button>
+      <small>${escapeHtml(paymentNote)}</small>
     </div>
   `;
 }
@@ -647,7 +652,7 @@ function renderHistory() {
   return `
     <section class="history-layout">
       <div class="section-heading">
-        <span class="eyebrow">服务端历史记录</span>
+        <span class="section-kicker">服务端历史记录</span>
         <h1>已审核资料</h1>
         <p>历史记录来自后端 API，可查看、删除并同步到当前登录用户。</p>
       </div>
@@ -664,9 +669,9 @@ function renderHistoryItem(report) {
   return `
     <article class="history-item">
       <div>
-        <span class="eyebrow">${report.unlocked ? "已解锁" : "免费预览"}</span>
+        <span class="status-chip">${report.unlocked ? "已解锁" : "免费预览"}</span>
         <h2>${escapeHtml(report.title)}</h2>
-        <p>${escapeHtml(report.createdAt)} · ${escapeHtml(report.conclusion)} · ${(report.risks || []).length} 条预览风险</p>
+        <p>${escapeHtml(report.createdAt)} / ${escapeHtml(report.conclusion)} / ${(report.risks || []).length} 条预览风险</p>
       </div>
       <div class="history-actions">
         <button class="ghost-button" type="button" data-load="${escapeHtml(report.id)}">${icon("file-search")}查看</button>

@@ -1,6 +1,6 @@
 # 避坑宝当前工作进度
 
-更新时间：2026-06-10 22:51（Asia/Shanghai）
+更新时间：2026-06-10 23:23（Asia/Shanghai）
 
 ## 当前目标
 
@@ -9,11 +9,10 @@
 ## 当前代码状态
 
 - 当前本地分支：`main`
-- 最新本地基础提交：`338b1df Add production payment OCR and compliance framework`
-- 当前还有一轮前端高级感改造改动，准备本地提交保存
-- 生产站点仍需重新部署后才会包含本轮前端改造
-- Vercel Production/Preview 已补支付宝环境变量，最新本地代码已通过 Vercel CLI 部署到生产环境。
-- 最新生产部署：`dpl_91drdfrPo9XCwAzxupn5pNixLnJb`，对应 GitHub commit `5af7c63bc6d0d6a7f4118632b70267c2f94e0381`。
+- 本轮前端动效优化基于提交：`1701f64 Record latest Vercel deployment status`
+- Vercel 项目 `bikengbao` 已连接 GitHub 仓库 `Tomaassfx/bikengbao`，后续 push 到 `main` 会触发 Vercel 自动部署。
+- 生产域名保持：`https://bikengbao.lifeadmin-ai.xyz` 和 `https://bikengbao.vercel.app`
+- 本轮改动完成后将通过 GitHub 自动部署并进行线上健康检查。
 
 ## 已完成
 
@@ -94,7 +93,6 @@
 
 ## 当前未完成
 
-- Vercel Git 自动部署还没连上：Vercel Project Settings > Git 打开 GitHub OAuth 后，GitHub 页面 `Authorize` 按钮处于禁用状态，并提示账号需要启用 2FA。需要用户完成 GitHub 账号授权/安全设置后继续连接 `Tomaassfx/bikengbao`。
 - 若先做网站版收费，支付宝真实支付仍需验证：
   - 支付宝应用已上线或沙箱可用
   - 电脑网站支付/手机网站支付产品已开通
@@ -122,18 +120,14 @@
 
 ## 下一步建议
 
-1. 完成 GitHub 对 Vercel 的 OAuth 授权并连接 `Tomaassfx/bikengbao`，让后续 `git push` 自动部署。
-2. 短期继续用 `bash scripts/deploy-vercel.sh --yes` 手动部署生产环境。
-3. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
-4. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
+1. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
+2. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
+3. 增加访问、上传、预览、支付点击、支付成功、复制话术等关键埋点。
+4. 明确运营主体、客服、隐私政策发布日期后再做正式投放或小程序提审。
 
 ## 本轮改动范围
 
 - `app.js`
 - `styles.css`
-- `miniprogram/app.wxss`
-- `miniprogram/pages/home/home.wxml`
-- `miniprogram/pages/home/home.wxss`
-- `miniprogram/pages/report/report.wxss`
-- `miniprogram/pages/history/history.wxss`
 - `docs/work-progress.md`
+- `docs/production-checklist.md`

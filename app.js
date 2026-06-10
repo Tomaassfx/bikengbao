@@ -485,6 +485,12 @@ function renderAudit() {
               <span><i></i>主材标准不清</span>
               <span><i></i>水电增项入口</span>
             </div>
+            <div class="desk-matrix" aria-label="风险维度">
+              <div class="matrix-row"><span>报价</span><i style="--fill:78%"></i><strong>78</strong></div>
+              <div class="matrix-row"><span>合同</span><i style="--fill:64%"></i><strong>64</strong></div>
+              <div class="matrix-row"><span>增项</span><i style="--fill:86%"></i><strong>86</strong></div>
+              <div class="matrix-row"><span>证据</span><i style="--fill:48%"></i><strong>48</strong></div>
+            </div>
             <small>免费预览先给 3 条明显风险，完整报告解锁全部细项。</small>
           </div>
           <div class="hero-insights" aria-label="审核能力摘要">
@@ -844,10 +850,38 @@ function bindEvents() {
   });
 }
 
+function hydrateMotion() {
+  const targets = document.querySelectorAll(
+    ".hero-panel, .upload-card, .audit-form, .side-panel > *, .report-header, .risk-radar, .summary-strip, .report-section, .report-actions, .history-list"
+  );
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (hydrateMotion.observer) hydrateMotion.observer.disconnect();
+  targets.forEach((element, index) => {
+    element.classList.add("reveal-ready");
+    element.style.setProperty("--reveal-delay", `${Math.min(index * 45, 280)}ms`);
+  });
+  if (reduceMotion || !("IntersectionObserver" in window)) {
+    targets.forEach((element) => element.classList.add("is-visible"));
+    return;
+  }
+  hydrateMotion.observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        hydrateMotion.observer.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.14 }
+  );
+  targets.forEach((element) => hydrateMotion.observer.observe(element));
+}
+
 function render() {
   document.querySelector("#app").innerHTML = renderShell();
   bindEvents();
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 2 } });
+  hydrateMotion();
 }
 
 async function init() {

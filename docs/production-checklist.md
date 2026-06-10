@@ -32,8 +32,9 @@
 ## 部署方式
 
 - Vercel 项目已在 `.vercel/project.json` 固定到 `bikengbao`。
-- 本地部署命令：`npm run deploy:vercel` 或 `bash scripts/deploy-vercel.sh`。
-- 若使用 CLI 非交互部署，先设置 `VERCEL_TOKEN`；若走 GitHub 自动部署，需要先在 Vercel 的 Project Settings > Git 完成 GitHub 授权并连接 `Tomaassfx/bikengbao`。
+- Vercel 项目已连接 GitHub 仓库 `Tomaassfx/bikengbao`，push 到 `main` 会触发自动部署。
+- 本地手动部署命令仍保留：`npm run deploy:vercel` 或 `bash scripts/deploy-vercel.sh`。
+- 若使用 CLI 非交互部署，先设置 `VERCEL_TOKEN`；平时优先走 GitHub 自动部署，CLI 作为网络异常或紧急发布备用。
 
 ## 产品验证
 

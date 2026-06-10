@@ -1,6 +1,6 @@
 # 避坑宝当前工作进度
 
-更新时间：2026-06-10 23:23（Asia/Shanghai）
+更新时间：2026-06-10 23:34（Asia/Shanghai）
 
 ## 当前目标
 
@@ -12,7 +12,7 @@
 - 本轮前端动效优化基于提交：`1701f64 Record latest Vercel deployment status`
 - Vercel 项目 `bikengbao` 已连接 GitHub 仓库 `Tomaassfx/bikengbao`，后续 push 到 `main` 会触发 Vercel 自动部署。
 - 生产域名保持：`https://bikengbao.lifeadmin-ai.xyz` 和 `https://bikengbao.vercel.app`
-- 本轮改动完成后将通过 GitHub 自动部署并进行线上健康检查。
+- 本轮改动已推送 GitHub，并通过 Vercel Git 自动部署到生产环境。
 
 ## 已完成
 
@@ -71,6 +71,10 @@
 - `https://bikengbao.vercel.app/health` 返回同样生产状态。
 - `git diff --check` 通过
 - 机械检查通过：未发现 `—`、旧紫色 `#6d4b7f`、旧蓝色变量、旧 `surface-warm`、旧 `#f4c05e`、明显残留 `border-radius: 8px`
+- Vercel 自动部署已验证：部署来源为 GitHub `main`，本轮功能提交信息为 `Polish premium audit UI motion`。
+- 线上静态资源已验证：`app.js` 包含 `desk-matrix` / `hydrateMotion`，`styles.css` 包含 `desk-scan` / `page-sweep` / `reveal-ready`。
+- 线上 API smoke 已通过：认证、生成预览报告、历史读取、删除测试报告均成功，报告返回 `aiStatus=deepseek_ok`。
+- Vercel 最近 2 分钟生产错误日志为空；此前 1 条 504 为本轮第一次 smoke 脚本超时测试产生，后续重跑通过。
 
 ### 浏览器和本地链路验证
 
@@ -90,6 +94,12 @@
   - 创建订单成功
   - 模拟支付解锁完整报告成功
   - 完整报告、下载按钮、历史记录页正常渲染
+- Chrome 桌面检查通过：
+  - 首页首屏、风险仪表盘、上传表单、侧栏状态正常渲染
+  - 免费预览、模拟支付解锁、完整报告、历史记录链路正常
+- Chrome 移动宽度检查通过：
+  - 首页和历史页无明显横向溢出
+  - 导航、CTA、历史操作按钮没有挤出容器
 
 ## 当前未完成
 

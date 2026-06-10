@@ -16,6 +16,7 @@ if [[ ! -x "$NODE_BIN" ]]; then
     exit 1
   fi
 fi
+export PATH="$(dirname "$NODE_BIN"):$PATH"
 
 if [[ ! -f "$NPM_CLI" ]]; then
   mkdir -p "$TOOL_DIR"

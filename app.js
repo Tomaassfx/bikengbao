@@ -18,6 +18,7 @@ const state = {
   report: null,
   history: [],
   unlocked: false,
+  pendingOrder: null,
   selectedPrice: 59,
   isBusy: false,
   busyLabel: "",
@@ -153,17 +154,48 @@ async function generateReport() {
 
 async function unlockReport() {
   if (!state.report) return;
+  let paymentWindow = null;
   try {
-    setBusy(true, "创建订单并解锁报告...");
+    const provider = state.service?.paymentProvider || "mock";
+    if (provider === "alipay") {
+      paymentWindow = window.open("", "_blank", "noopener,noreferrer");
+    }
+    setBusy(true, provider === "alipay" ? "创建支付宝订单..." : "创建订单并解锁报告...");
     await ensureAuth();
     const orderPayload = await apiRequest("/v1/orders", {
       method: "POST",
-      body: JSON.stringify({ reportId: state.report.id, amount: state.selectedPrice })
+      body: JSON.stringify({
+        reportId: state.report.id,
+        amount: state.selectedPrice,
+        clientType: detectClientType()
+      })
     });
-    if (orderPayload.payment?.mode !== "mock") {
+
+    if (orderPayload.payment?.mode === "alipay") {
+      state.pendingOrder = {
+        id: orderPayload.order.id,
+        amount: orderPayload.order.amount,
+        paymentUrl: orderPayload.payment.paymentUrl
+      };
+      if (paymentWindow && orderPayload.payment.paymentUrl) {
+        paymentWindow.location.href = orderPayload.payment.paymentUrl;
+      } else if (paymentWindow) {
+        paymentWindow.close();
+      }
+      setBusy(false);
+      render();
+      setToast("支付宝收银台已打开，付款成功后会自动解锁报告。");
+      pollOrder(orderPayload.order.id);
+      return;
+    }
+
+    if (orderPayload.payment?.mode === "wechat") {
+      if (paymentWindow) paymentWindow.close();
       setToast("已创建微信支付订单，请在小程序内完成支付。");
       return;
     }
+    if (paymentWindow) paymentWindow.close();
+
     const paidPayload = await apiRequest(`/v1/orders/${orderPayload.order.id}/mock-pay`, {
       method: "POST",
       body: JSON.stringify({})
@@ -173,10 +205,37 @@ async function unlockReport() {
     await loadHistory();
     setToast(`已模拟支付 ${state.selectedPrice} 元，完整报告已解锁。`);
   } catch (error) {
+    if (paymentWindow) paymentWindow.close();
     setToast(error.message || "解锁失败");
   } finally {
     setBusy(false);
   }
+}
+
+async function pollOrder(orderId, attempts = 45) {
+  for (let index = 0; index < attempts; index += 1) {
+    await wait(2000);
+    try {
+      const payload = await apiRequest(`/v1/orders/${orderId}`);
+      if (payload.order?.status === "paid") {
+        state.pendingOrder = null;
+        state.report = payload.report;
+        state.unlocked = Boolean(payload.report?.unlocked);
+        await loadHistory();
+        setToast("支付成功，完整报告已解锁。");
+        render();
+        return;
+      }
+      if (payload.order?.status === "failed") {
+        setToast("支付未完成，请重新发起支付。");
+        render();
+        return;
+      }
+    } catch (error) {
+      if (index > 2) setToast(error.message || "支付状态查询失败");
+    }
+  }
+  setToast("还没有收到支付成功通知，稍后可在历史记录中查看。");
 }
 
 async function deleteReport(id) {
@@ -211,6 +270,23 @@ async function loadReport(id) {
   }
 }
 
+async function resumePaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const reportId = params.get("reportId");
+  const orderId = params.get("out_trade_no");
+  if (reportId) {
+    await loadReport(reportId);
+  }
+  if (orderId) {
+    state.pendingOrder = { id: orderId };
+    setToast("已从支付宝返回，正在确认支付结果。");
+    pollOrder(orderId, 15);
+  }
+  if (reportId || orderId) {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+}
+
 function validateAuditForm() {
   const errors = {};
   const area = Number(state.form.area);
@@ -231,6 +307,15 @@ function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function detectClientType() {
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  return isMobile ? "mobile" : "web";
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function servicePill() {
@@ -627,11 +712,9 @@ function renderRisk(risk) {
 }
 
 function renderPaywall(report) {
-  const isMockPayment = state.service?.paymentProvider !== "wechat";
-  const unlockLabel = isMockPayment ? "模拟支付并解锁" : "创建微信支付订单";
-  const paymentNote = isMockPayment
-    ? `当前为验证环境，不会发起真实扣款。报告 ID：${report.id}`
-    : `将在微信小程序内完成支付确认。报告 ID：${report.id}`;
+  const provider = state.service?.paymentProvider || "mock";
+  const unlockLabel = paymentUnlockLabel(provider);
+  const paymentNote = paymentHint(provider, report.id);
   return `
     <div class="paywall">
       <div>
@@ -643,8 +726,21 @@ function renderPaywall(report) {
       </div>
       <button class="primary-button" type="button" data-action="unlock" ${state.isBusy ? "disabled" : ""}>${icon("wallet")}${state.isBusy ? "处理中..." : unlockLabel}</button>
       <small>${escapeHtml(paymentNote)}</small>
+      ${state.pendingOrder?.paymentUrl ? `<a class="payment-link" href="${escapeHtml(state.pendingOrder.paymentUrl)}" target="_blank" rel="noreferrer">重新打开支付宝收银台</a>` : ""}
     </div>
   `;
+}
+
+function paymentUnlockLabel(provider) {
+  if (provider === "alipay") return "支付宝付款并解锁";
+  if (provider === "wechat") return "创建微信支付订单";
+  return "模拟支付并解锁";
+}
+
+function paymentHint(provider, reportId) {
+  if (provider === "alipay") return `支付宝付款成功后自动解锁。报告 ID：${reportId}`;
+  if (provider === "wechat") return `将在微信小程序内完成支付确认。报告 ID：${reportId}`;
+  return `当前为验证环境，不会发起真实扣款。报告 ID：${reportId}`;
 }
 
 function renderHistory() {
@@ -758,6 +854,7 @@ async function init() {
   render();
   await loadServiceStatus();
   await loadHistory();
+  await resumePaymentReturn();
   render();
 }
 

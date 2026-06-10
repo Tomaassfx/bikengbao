@@ -1,6 +1,6 @@
 # 避坑宝当前工作进度
 
-更新时间：2026-06-08 19:36（Asia/Shanghai）
+更新时间：2026-06-10 22:28（Asia/Shanghai）
 
 ## 当前目标
 
@@ -12,6 +12,7 @@
 - 最新本地基础提交：`338b1df Add production payment OCR and compliance framework`
 - 当前还有一轮前端高级感改造改动，准备本地提交保存
 - 生产站点仍需重新部署后才会包含本轮前端改造
+- Vercel Production/Preview 已补支付宝环境变量并完成一次 Production redeploy，但最新部署仍来自 Vercel 上一次记录的 `localCommit=b9f48dec53ffe640ed260ce5bcee000a8f40e939`，本地未提交改动还没有被自动上传。
 
 ## 已完成
 
@@ -19,7 +20,13 @@
 
 - 已补真实微信登录框架：`server/adapters/wechat_auth.py`
 - 已补微信支付 JSAPI 下单和回调解锁框架：`server/adapters/payment.py`
+- 已补网站版支付宝支付框架：支付宝收银台跳转、异步通知验签、订单轮询和自动解锁。
+- 已在 Vercel 项目 `bikengbao` 添加支付宝生产变量，并验证线上 `/health` 返回 `paymentProvider=alipay`。
 - 已补腾讯云 OCR 调用框架：`server/adapters/ocr.py`
+- 已补本地 Vercel 绑定和部署脚本：
+  - `.vercel/project.json`
+  - `scripts/deploy-vercel.sh`
+  - `npm run deploy:vercel`
 - 已补生产环境变量说明：`docs/production-env.md`
 - 已补小程序提审材料清单：`docs/miniprogram-submit-checklist.md`
 - 已补合规页面：
@@ -56,6 +63,9 @@
 - `node --check miniprogram/pages/report/report.js` 通过
 - `node --check miniprogram/pages/history/history.js` 通过
 - `python3 -m compileall server api` 通过
+- `python3 -m unittest discover -s tests` 通过
+- `python3 -m compileall -q server api tests` 通过
+- `https://bikengbao.lifeadmin-ai.xyz/health` 返回：`aiProvider=deepseek`、`ocrProvider=mock`、`paymentProvider=alipay`、`dbProvider=postgres`、`fileStorageProvider=blob`
 - `git diff --check` 通过
 - 机械检查通过：未发现 `—`、旧紫色 `#6d4b7f`、旧蓝色变量、旧 `surface-warm`、旧 `#f4c05e`、明显残留 `border-radius: 8px`
 
@@ -80,8 +90,12 @@
 
 ## 当前未完成
 
-- 本轮前端改造尚未部署到 Vercel 生产环境。
-- 远端 GitHub 同步仍依赖可用的 GitHub 写入方式或本机 Git 凭据。
+- 本地最新代码尚未部署到 Vercel 生产环境；当前 Vercel redeploy 只应用了新环境变量。
+- Vercel Git 自动部署还没连上：Vercel Project Settings > Git 打开 GitHub OAuth 后，GitHub 页面 `Authorize` 按钮处于禁用状态，并提示账号需要启用 2FA。需要用户完成 GitHub 账号授权/安全设置后继续连接 `Tomaassfx/bikengbao`。
+- 若先做网站版收费，支付宝真实支付仍需验证：
+  - 支付宝应用已上线或沙箱可用
+  - 电脑网站支付/手机网站支付产品已开通
+  - 用沙箱或小额真实订单跑通 `/v1/payments/alipay/notify` 异步通知和自动解锁
 - 真实微信登录需要提供：
   - `WECHAT_APP_ID`
   - `WECHAT_APP_SECRET`
@@ -105,11 +119,11 @@
 
 ## 下一步建议
 
-1. 提交并同步本轮前端高级感改造。
-2. 重新部署最新代码到 Vercel。
-3. 在 Vercel 配置微信登录、微信支付、腾讯 OCR 的生产环境变量。
-4. 用微信开发者工具跑小程序真机预览。
-5. 准备提审材料并补齐小程序后台域名白名单。
+1. 完成 GitHub 对 Vercel 的 OAuth 授权并连接 `Tomaassfx/bikengbao`，让 `git push` 自动部署。
+2. 或提供 `VERCEL_TOKEN`，用 `npm run deploy:vercel` 做非交互部署。
+3. 提交并同步本轮支付宝支付框架、本地部署脚本和测试。
+4. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
+5. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
 
 ## 本轮改动范围
 

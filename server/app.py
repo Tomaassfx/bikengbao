@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .adapters.file_storage import active_file_storage_provider, delete_upload, save_upload
 from .adapters.ocr import extract_text
-from .adapters.payment import create_payment, parse_wechat_notification
+from .adapters.payment import create_payment, parse_alipay_notification, parse_wechat_notification
 from .adapters.wechat_auth import resolve_wechat_session
 from .config import AI_PROVIDER, AUTH_PROVIDER, HOST, MAX_UPLOAD_BYTES, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
 from .rules import generate_report
@@ -45,6 +45,11 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             self.send_json({"reports": reports})
             return
 
+        order_id = self.match_order_id(route)
+        if order_id:
+            self.handle_get_order(user_id, order_id)
+            return
+
         report_id = self.match_report_id(route)
         if report_id:
             db = load_db()
@@ -79,6 +84,10 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
 
         if route == "/v1/payments/wechat/notify":
             self.handle_wechat_pay_notify()
+            return
+
+        if route == "/v1/payments/alipay/notify":
+            self.handle_alipay_notify()
             return
 
         order_match = re.fullmatch(r"/v1/orders/([^/]+)/mock-pay", route)
@@ -228,6 +237,8 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             "createdAt": now_text(),
             "createdAtMs": now_ms(),
             "paidAt": "",
+            "description": "避坑宝装修审核报告",
+            "clientType": payload.get("clientType") or "web",
             "openid": db["users"].get(user_id, {}).get("openid", ""),
             "provider": PAYMENT_PROVIDER,
         }
@@ -267,6 +278,18 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         save_db(db)
         self.send_json({"order": order, "report": self.public_report(report)})
 
+    def handle_get_order(self, user_id: str, order_id: str) -> None:
+        db = load_db()
+        order = db["orders"].get(order_id)
+        if not order or order.get("userId") != user_id:
+            self.send_error_json(404, "订单不存在")
+            return
+        payload: Dict[str, Any] = {"order": self.public_order(order)}
+        report = db["reports"].get(order.get("reportId", ""))
+        if report:
+            payload["report"] = self.public_report(report)
+        self.send_json(payload)
+
     def handle_wechat_pay_notify(self) -> None:
         raw_body = self.read_raw_body()
         try:
@@ -302,12 +325,54 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         save_db(db)
         self.send_json({"code": "SUCCESS", "message": "成功"})
 
+    def handle_alipay_notify(self) -> None:
+        raw_body = self.read_raw_body()
+        try:
+            notification = parse_alipay_notification(raw_body)
+        except Exception as error:
+            self.send_text("fail", status=400)
+            print(f"[api] 支付宝回调验签失败：{error}")
+            return
+
+        order_id = notification.get("out_trade_no", "")
+        trade_status = notification.get("trade_status", "")
+        db = load_db()
+        order = db["orders"].get(order_id)
+        if not order:
+            self.send_text("fail", status=404)
+            return
+        if trade_status not in {"TRADE_SUCCESS", "TRADE_FINISHED"}:
+            order["status"] = "failed" if trade_status == "TRADE_CLOSED" else "pending"
+            order["paymentStatus"] = trade_status or "UNKNOWN"
+            save_db(db)
+            self.send_text("success")
+            return
+
+        report = db["reports"].get(order["reportId"])
+        if not report:
+            self.send_text("fail", status=404)
+            return
+
+        order["status"] = "paid"
+        order["paidAt"] = order.get("paidAt") or now_text()
+        order["transactionId"] = notification.get("trade_no", "")
+        order["buyerId"] = notification.get("buyer_id", "")
+        order["paymentStatus"] = trade_status
+        report["unlocked"] = True
+        report["unlockedAt"] = report.get("unlockedAt") or now_text()
+        save_db(db)
+        self.send_text("success")
+
     def route(self) -> Tuple[str, Dict[str, Any]]:
         parsed = urlparse(self.path)
         return parsed.path.rstrip("/") or "/", parse_qs(parsed.query)
 
     def match_report_id(self, route: str) -> Optional[str]:
         match = re.fullmatch(r"/v1/reports/([^/]+)", route)
+        return match.group(1) if match else None
+
+    def match_order_id(self, route: str) -> Optional[str]:
+        match = re.fullmatch(r"/v1/orders/([^/]+)", route)
         return match.group(1) if match else None
 
     def current_user_id(self) -> str:
@@ -346,6 +411,18 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             public["risks"] = report.get("risks", [])[:3]
         return public
 
+    def public_order(self, order: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": order.get("id", ""),
+            "reportId": order.get("reportId", ""),
+            "amount": order.get("amount", 0),
+            "status": order.get("status", ""),
+            "provider": order.get("provider", ""),
+            "paymentId": order.get("paymentId", ""),
+            "createdAt": order.get("createdAt", ""),
+            "paidAt": order.get("paidAt", ""),
+        }
+
     def send_json(self, payload: Dict[str, Any], status: int = 200) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
@@ -359,6 +436,17 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
 
     def send_error_json(self, status: int, message: str) -> None:
         self.send_json({"message": message}, status=status)
+
+    def send_text(self, text: str, status: int = 200) -> None:
+        body = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[api] {self.address_string()} {fmt % args}")

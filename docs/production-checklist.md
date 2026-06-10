@@ -8,6 +8,7 @@
 - AI：DeepSeek 已接入，部署平台配置 `BIKENGBAO_AI_PROVIDER=deepseek` 和 `DEEPSEEK_API_KEY` 后，报告会返回 `aiStatus=deepseek_ok`。
 - DeepSeek：密钥只放环境变量，不要写入代码、README 或小程序配置。
 - 支付：已补微信支付 JSAPI 下单、支付参数生成、回调验签/解密框架。生产环境需配置微信商户号、私钥、平台证书和 API v3 key。
+- 支付宝：已补网站版支付宝支付框架。生产环境配置 `BIKENGBAO_PAYMENT_PROVIDER=alipay`、`ALIPAY_APP_ID`、应用私钥、支付宝公钥、回调地址后启用。
 - 登录：已补微信 `code2session` 框架。生产环境配置 `BIKENGBAO_AUTH_PROVIDER=wechat`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET` 后启用。
 - 域名：Web 后端必须部署到 HTTPS；微信小程序上线时，还要将该域名加入 request/uploadFile 合法域名。
 
@@ -23,8 +24,16 @@
 
 - 可以验证 Web 页面、API、DeepSeek、模拟支付、报告解锁、历史记录。
 - 数据库和对象存储接入后，线上数据不再依赖 `/tmp`。
+- Vercel Production 已切到 `paymentProvider=alipay`；支付宝自动解锁仍需用沙箱或小额真实付款跑通异步通知。
 - Vercel Blob 当前使用不可猜测路径存储原始文件，接口不向前端返回 Blob URL。后续建议增加自动过期清理、上传前敏感信息脱敏和后台删除审计。
 - 小程序上线还缺微信小程序 AppID、微信支付商户号、隐私政策、用户协议和小程序后台域名白名单。
+- 若先做网站版，可以暂缓小程序和微信支付，优先验证支付宝付款后自动解锁报告。
+
+## 部署方式
+
+- Vercel 项目已在 `.vercel/project.json` 固定到 `bikengbao`。
+- 本地部署命令：`npm run deploy:vercel` 或 `bash scripts/deploy-vercel.sh`。
+- 若使用 CLI 非交互部署，先设置 `VERCEL_TOKEN`；若走 GitHub 自动部署，需要先在 Vercel 的 Project Settings > Git 完成 GitHub 授权并连接 `Tomaassfx/bikengbao`。
 
 ## 产品验证
 

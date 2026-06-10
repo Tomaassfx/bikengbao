@@ -5,6 +5,8 @@
   "description": "避坑宝 V1 - 装修报价/合同审核静态原型",
   "scripts": {
     "serve": "python3 -m http.server 4173",
-    "check": "python3 -m http.server 4173"
+    "check": "python3 -m unittest discover -s tests",
+    "test": "python3 -m unittest discover -s tests",
+    "deploy:vercel": "bash scripts/deploy-vercel.sh"
   }
 }

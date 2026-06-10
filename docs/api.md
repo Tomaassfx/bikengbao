@@ -9,8 +9,10 @@ Vercel 部署后默认同源访问：
 - `POST /v1/files`
 - `POST /v1/audits`
 - `POST /v1/orders`
+- `GET /v1/orders/{orderId}`
 - `POST /v1/orders/{orderId}/mock-pay`
 - `POST /v1/payments/wechat/notify`
+- `POST /v1/payments/alipay/notify`
 - `GET /v1/reports`
 - `GET /v1/reports/{reportId}`
 - `DELETE /v1/reports/{reportId}`
@@ -24,7 +26,7 @@ Vercel 部署后默认同源访问：
   "authProvider": "wechat",
   "aiProvider": "deepseek",
   "ocrProvider": "tencent",
-  "paymentProvider": "wechat",
+  "paymentProvider": "alipay",
   "dbProvider": "postgres",
   "fileStorageProvider": "blob"
 }
@@ -146,8 +148,14 @@ Authorization: Bearer demo-token-wx_xxx
 `POST /v1/orders`
 
 ```json
-{ "reportId": "report_id", "amount": 59 }
+{ "reportId": "report_id", "amount": 59, "clientType": "web" }
 ```
+
+查询订单状态：
+
+`GET /v1/orders/{orderId}`
+
+网站端用于轮询支付状态。订单支付成功后，响应会包含已解锁报告。
 
 开发环境模拟支付：
 
@@ -169,6 +177,20 @@ Authorization: Bearer demo-token-wx_xxx
 - `WECHAT_PAY_API_V3_KEY`
 - `WECHAT_PAY_PLATFORM_CERT` 或 `WECHAT_PAY_PLATFORM_CERT_PATH`
 - `WECHAT_PAY_NOTIFY_URL`
+
+支付宝网站支付回调：
+
+`POST /v1/payments/alipay/notify`
+
+正式上线需要配置：
+
+- `BIKENGBAO_PAYMENT_PROVIDER=alipay`
+- `ALIPAY_APP_ID`
+- `ALIPAY_APP_PRIVATE_KEY` 或 `ALIPAY_APP_PRIVATE_KEY_PATH`
+- `ALIPAY_PUBLIC_KEY` 或 `ALIPAY_PUBLIC_KEY_PATH`
+- `ALIPAY_GATEWAY=https://openapi.alipay.com/gateway.do`
+- `ALIPAY_NOTIFY_URL=https://bikengbao.lifeadmin-ai.xyz/v1/payments/alipay/notify`
+- `ALIPAY_RETURN_URL=https://bikengbao.lifeadmin-ai.xyz/`
 
 ## OCR
 

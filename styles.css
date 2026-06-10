@@ -1020,6 +1020,18 @@ p {
   color: #cbd6d4;
 }
 
+.payment-link {
+  width: fit-content;
+  color: #f1c15f;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.payment-link:hover {
+  text-decoration: underline;
+}
+
 .price-options {
   display: flex;
   flex-wrap: wrap;

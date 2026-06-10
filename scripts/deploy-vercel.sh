@@ -17,6 +17,10 @@ if [[ ! -x "$NODE_BIN" ]]; then
   fi
 fi
 export PATH="$(dirname "$NODE_BIN"):$PATH"
+DNS_OVERRIDE="$ROOT_DIR/scripts/vercel-dns-override.cjs"
+if [[ -f "$DNS_OVERRIDE" ]]; then
+  export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$DNS_OVERRIDE"
+fi
 
 if [[ ! -f "$NPM_CLI" ]]; then
   mkdir -p "$TOOL_DIR"

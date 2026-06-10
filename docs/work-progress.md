@@ -1,6 +1,6 @@
 # 避坑宝当前工作进度
 
-更新时间：2026-06-10 22:28（Asia/Shanghai）
+更新时间：2026-06-10 22:51（Asia/Shanghai）
 
 ## 当前目标
 
@@ -12,7 +12,8 @@
 - 最新本地基础提交：`338b1df Add production payment OCR and compliance framework`
 - 当前还有一轮前端高级感改造改动，准备本地提交保存
 - 生产站点仍需重新部署后才会包含本轮前端改造
-- Vercel Production/Preview 已补支付宝环境变量并完成一次 Production redeploy，但最新部署仍来自 Vercel 上一次记录的 `localCommit=b9f48dec53ffe640ed260ce5bcee000a8f40e939`，本地未提交改动还没有被自动上传。
+- Vercel Production/Preview 已补支付宝环境变量，最新本地代码已通过 Vercel CLI 部署到生产环境。
+- 最新生产部署：`dpl_91drdfrPo9XCwAzxupn5pNixLnJb`，对应 GitHub commit `5af7c63bc6d0d6a7f4118632b70267c2f94e0381`。
 
 ## 已完成
 
@@ -26,7 +27,9 @@
 - 已补本地 Vercel 绑定和部署脚本：
   - `.vercel/project.json`
   - `scripts/deploy-vercel.sh`
+  - `scripts/vercel-dns-override.cjs`
   - `npm run deploy:vercel`
+- 已将本地最新代码同步到 GitHub `Tomaassfx/bikengbao` 的 `main` 分支。
 - 已补生产环境变量说明：`docs/production-env.md`
 - 已补小程序提审材料清单：`docs/miniprogram-submit-checklist.md`
 - 已补合规页面：
@@ -66,6 +69,7 @@
 - `python3 -m unittest discover -s tests` 通过
 - `python3 -m compileall -q server api tests` 通过
 - `https://bikengbao.lifeadmin-ai.xyz/health` 返回：`aiProvider=deepseek`、`ocrProvider=mock`、`paymentProvider=alipay`、`dbProvider=postgres`、`fileStorageProvider=blob`
+- `https://bikengbao.vercel.app/health` 返回同样生产状态。
 - `git diff --check` 通过
 - 机械检查通过：未发现 `—`、旧紫色 `#6d4b7f`、旧蓝色变量、旧 `surface-warm`、旧 `#f4c05e`、明显残留 `border-radius: 8px`
 
@@ -90,7 +94,6 @@
 
 ## 当前未完成
 
-- 本地最新代码尚未部署到 Vercel 生产环境；当前 Vercel redeploy 只应用了新环境变量。
 - Vercel Git 自动部署还没连上：Vercel Project Settings > Git 打开 GitHub OAuth 后，GitHub 页面 `Authorize` 按钮处于禁用状态，并提示账号需要启用 2FA。需要用户完成 GitHub 账号授权/安全设置后继续连接 `Tomaassfx/bikengbao`。
 - 若先做网站版收费，支付宝真实支付仍需验证：
   - 支付宝应用已上线或沙箱可用
@@ -119,11 +122,10 @@
 
 ## 下一步建议
 
-1. 完成 GitHub 对 Vercel 的 OAuth 授权并连接 `Tomaassfx/bikengbao`，让 `git push` 自动部署。
-2. 或提供 `VERCEL_TOKEN`，用 `npm run deploy:vercel` 做非交互部署。
-3. 提交并同步本轮支付宝支付框架、本地部署脚本和测试。
-4. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
-5. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
+1. 完成 GitHub 对 Vercel 的 OAuth 授权并连接 `Tomaassfx/bikengbao`，让后续 `git push` 自动部署。
+2. 短期继续用 `bash scripts/deploy-vercel.sh --yes` 手动部署生产环境。
+3. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
+4. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
 
 ## 本轮改动范围
 

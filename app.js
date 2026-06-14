@@ -157,10 +157,11 @@ async function unlockReport() {
   let paymentWindow = null;
   try {
     const provider = state.service?.paymentProvider || "mock";
+    const isManualQr = provider === "manual" || provider === "manual_qr";
     if (provider === "alipay") {
       paymentWindow = window.open("", "_blank", "noopener,noreferrer");
     }
-    setBusy(true, provider === "alipay" ? "创建支付宝订单..." : "创建订单并解锁报告...");
+    setBusy(true, provider === "alipay" ? "创建支付宝订单..." : isManualQr ? "生成扫码付款单..." : "创建订单并解锁报告...");
     await ensureAuth();
     const orderPayload = await apiRequest("/v1/orders", {
       method: "POST",
@@ -189,6 +190,27 @@ async function unlockReport() {
       return;
     }
 
+    if (orderPayload.payment?.mode === "manual_qr") {
+      if (paymentWindow) paymentWindow.close();
+      state.pendingOrder = {
+        id: orderPayload.order.id,
+        reportId: orderPayload.order.reportId,
+        amount: orderPayload.order.amount,
+        status: orderPayload.order.status,
+        mode: "manual_qr",
+        qrImageUrl: orderPayload.payment.qrImageUrl,
+        accountName: orderPayload.payment.accountName,
+        accountHint: orderPayload.payment.accountHint,
+        reference: orderPayload.payment.reference,
+        amountText: orderPayload.payment.amountText,
+        expiresInMinutes: orderPayload.payment.expiresInMinutes,
+        instructions: orderPayload.payment.instructions || []
+      };
+      setToast("扫码付款单已生成，到账后人工确认并自动解锁。");
+      pollOrder(orderPayload.order.id, 180, 5000);
+      return;
+    }
+
     if (orderPayload.payment?.mode === "wechat") {
       if (paymentWindow) paymentWindow.close();
       setToast("已创建微信支付订单，请在小程序内完成支付。");
@@ -212,9 +234,9 @@ async function unlockReport() {
   }
 }
 
-async function pollOrder(orderId, attempts = 45) {
+async function pollOrder(orderId, attempts = 45, intervalMs = 2000) {
   for (let index = 0; index < attempts; index += 1) {
-    await wait(2000);
+    await wait(intervalMs);
     try {
       const payload = await apiRequest(`/v1/orders/${orderId}`);
       if (payload.order?.status === "paid") {
@@ -236,6 +258,32 @@ async function pollOrder(orderId, attempts = 45) {
     }
   }
   setToast("还没有收到支付成功通知，稍后可在历史记录中查看。");
+}
+
+async function refreshPendingOrder() {
+  if (!state.pendingOrder?.id) return;
+  try {
+    setBusy(true, "查询人工确认状态...");
+    const payload = await apiRequest(`/v1/orders/${state.pendingOrder.id}`);
+    if (payload.order?.status === "paid") {
+      state.pendingOrder = null;
+      state.report = payload.report;
+      state.unlocked = Boolean(payload.report?.unlocked);
+      await loadHistory();
+      setToast("已确认到账，完整报告已解锁。");
+      return;
+    }
+    state.pendingOrder = {
+      ...state.pendingOrder,
+      status: payload.order?.status || state.pendingOrder.status,
+      paidAt: payload.order?.paidAt || ""
+    };
+    setToast("还未确认到账，请稍后刷新。");
+  } catch (error) {
+    setToast(error.message || "支付状态查询失败");
+  } finally {
+    setBusy(false);
+  }
 }
 
 async function deleteReport(id) {
@@ -732,20 +780,72 @@ function renderPaywall(report) {
       </div>
       <button class="primary-button" type="button" data-action="unlock" ${state.isBusy ? "disabled" : ""}>${icon("wallet")}${state.isBusy ? "处理中..." : unlockLabel}</button>
       <small>${escapeHtml(paymentNote)}</small>
+      ${renderManualPaymentBox()}
       ${state.pendingOrder?.paymentUrl ? `<a class="payment-link" href="${escapeHtml(state.pendingOrder.paymentUrl)}" target="_blank" rel="noreferrer">重新打开支付宝收银台</a>` : ""}
     </div>
   `;
 }
 
+function renderManualPaymentBox() {
+  const order = state.pendingOrder;
+  if (order?.mode !== "manual_qr") return "";
+  const instructions = order.instructions?.length ? order.instructions : ["扫码付款后等待人工确认。"];
+  const statusText = order.status === "paid" ? "已确认" : "待人工确认";
+  return `
+    <div class="manual-payment">
+      <div class="manual-payment-head">
+        <div>
+          <span>扫码付款单</span>
+          <strong>${money(order.amount)} 元</strong>
+        </div>
+        <small>${escapeHtml(statusText)}</small>
+      </div>
+      <div class="manual-payment-body">
+        ${
+          order.qrImageUrl
+            ? `<img src="${escapeHtml(order.qrImageUrl)}" alt="避坑宝收款二维码" loading="lazy" />`
+            : `<div class="qr-placeholder">${icon("qr-code")}<span>收款码待配置</span></div>`
+        }
+        <div class="manual-payment-detail">
+          <span>${escapeHtml(order.accountHint || "收款码")}</span>
+          <strong>${escapeHtml(order.accountName || "避坑宝运营")}</strong>
+          <label>付款备注码</label>
+          <code>${escapeHtml(order.reference || order.id)}</code>
+          <div class="manual-actions">
+            <button class="ghost-button" type="button" data-copy="manual-payment">${icon("copy")}复制付款信息</button>
+            <button class="ghost-button" type="button" data-action="check-payment">${icon("refresh-cw")}刷新状态</button>
+          </div>
+        </div>
+      </div>
+      <ol>
+        ${instructions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ol>
+    </div>
+  `;
+}
+
+function manualPaymentCopyText() {
+  const order = state.pendingOrder || {};
+  return [
+    `避坑宝报告解锁付款`,
+    `金额：${money(order.amount)} 元`,
+    `付款备注码：${order.reference || order.id || ""}`,
+    `收款方：${order.accountName || "避坑宝运营"}`,
+    `订单号：${order.id || ""}`
+  ].join("\n");
+}
+
 function paymentUnlockLabel(provider) {
   if (provider === "alipay") return "支付宝付款并解锁";
   if (provider === "wechat") return "创建微信支付订单";
+  if (provider === "manual" || provider === "manual_qr") return "生成扫码付款单";
   return "模拟支付并解锁";
 }
 
 function paymentHint(provider, reportId) {
   if (provider === "alipay") return `支付宝付款成功后自动解锁。报告 ID：${reportId}`;
   if (provider === "wechat") return `将在微信小程序内完成支付确认。报告 ID：${reportId}`;
+  if (provider === "manual" || provider === "manual_qr") return `扫码付款后由人工核对到账，确认后自动解锁。报告 ID：${reportId}`;
   return `当前为验证环境，不会发起真实扣款。报告 ID：${reportId}`;
 }
 
@@ -838,7 +938,9 @@ function bindEvents() {
   });
 
   document.querySelector("[data-action='unlock']")?.addEventListener("click", unlockReport);
+  document.querySelector("[data-action='check-payment']")?.addEventListener("click", refreshPendingOrder);
   document.querySelector("[data-action='download']")?.addEventListener("click", downloadReport);
+  document.querySelector("[data-copy='manual-payment']")?.addEventListener("click", () => copyText(manualPaymentCopyText()));
   document.querySelector("[data-copy='scripts']")?.addEventListener("click", () => copyText((state.report.scripts || []).join("\n\n")));
   document.querySelector("[data-copy='family']")?.addEventListener("click", () => copyText(state.report.familySummary || ""));
 

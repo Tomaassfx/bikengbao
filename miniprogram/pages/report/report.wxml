@@ -46,7 +46,36 @@
       <button class="price {{selectedPrice === 99 ? 'selected' : ''}}" data-price="99" bindtap="selectPrice">99 元</button>
     </view>
     <button class="primary-btn" loading="{{paying}}" bindtap="createOrder">支付并解锁</button>
-    <text class="muted">开发环境可使用后端模拟支付；上线时替换为微信支付。</text>
+    <view class="manual-payment" wx:if="{{manualPayment}}">
+      <view class="manual-head">
+        <view>
+          <text>扫码付款单</text>
+          <text>{{manualPayment.amountText}} 元</text>
+        </view>
+        <text>待人工确认</text>
+      </view>
+      <view class="manual-body">
+        <image wx:if="{{manualPayment.qrImageUrl}}" src="{{manualPayment.qrImageUrl}}" mode="aspectFit" />
+        <view class="qr-placeholder" wx:else>
+          <text>收款码待配置</text>
+        </view>
+        <view class="manual-detail">
+          <text>{{manualPayment.accountHint}}</text>
+          <text>{{manualPayment.accountName}}</text>
+          <text>付款备注码</text>
+          <text class="reference">{{manualPayment.reference}}</text>
+        </view>
+      </view>
+      <view class="manual-instruction" wx:for="{{manualPayment.instructions}}" wx:key="*this">
+        <text>{{index + 1}}.</text>
+        <text>{{item}}</text>
+      </view>
+      <view class="manual-buttons">
+        <button class="mini-btn" bindtap="copyManualPayment">复制付款信息</button>
+        <button class="mini-btn" bindtap="refreshManualPayment">刷新状态</button>
+      </view>
+    </view>
+    <text class="muted">当前可使用模拟支付、微信支付或扫码后人工确认，具体由后端环境配置决定。</text>
   </view>
 
   <block wx:if="{{unlocked}}">

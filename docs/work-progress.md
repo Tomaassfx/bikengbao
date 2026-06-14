@@ -1,10 +1,14 @@
 # 避坑宝当前工作进度
 
-更新时间：2026-06-10 23:34（Asia/Shanghai）
+更新时间：2026-06-14（Asia/Shanghai）
 
 ## 当前目标
 
 把避坑宝从可运行原型继续推进到更接近上线的小程序式产品：前端视觉要有信任感和高级感，核心上传、审核、预览、解锁、历史记录链路保持可用，并为真实支付、真实 OCR、合规提审继续预留框架。
+
+当前产品路径调整：网站版先采用免登录上传与订单/报告链路，短信登录后续再补。
+
+收费路径调整：支付宝电脑网站支付受 ICP 备案卡点影响，先采用“收款码付款 + 后台人工确认”的方式验证真实付费意愿。
 
 ## 当前代码状态
 
@@ -12,7 +16,8 @@
 - 本轮前端动效优化基于提交：`1701f64 Record latest Vercel deployment status`
 - Vercel 项目 `bikengbao` 已连接 GitHub 仓库 `Tomaassfx/bikengbao`，后续 push 到 `main` 会触发 Vercel 自动部署。
 - 生产域名保持：`https://bikengbao.lifeadmin-ai.xyz` 和 `https://bikengbao.vercel.app`
-- 本轮改动已推送 GitHub，并通过 Vercel Git 自动部署到生产环境。
+- 上一轮功能代码已推送 GitHub，并通过 Vercel Git 自动部署到生产环境。
+- 本轮腾讯云 OCR 环境变量通过 Vercel CLI 写入 Production/Preview，并已手动触发生产部署生效。
 
 ## 已完成
 
@@ -21,8 +26,17 @@
 - 已补真实微信登录框架：`server/adapters/wechat_auth.py`
 - 已补微信支付 JSAPI 下单和回调解锁框架：`server/adapters/payment.py`
 - 已补网站版支付宝支付框架：支付宝收银台跳转、异步通知验签、订单轮询和自动解锁。
+- 已补扫码付款 + 人工确认支付框架：
+  - `BIKENGBAO_PAYMENT_PROVIDER=manual_qr`
+  - 用户端生成扫码付款单、备注码和状态轮询
+  - `/v1/admin/orders/{orderId}/confirm-payment` 后台确认接口
+  - `/admin.html` 内部确认页
+  - 后台确认到账后自动解锁报告
 - 已在 Vercel 项目 `bikengbao` 添加支付宝生产变量，并验证线上 `/health` 返回 `paymentProvider=alipay`。
 - 已补腾讯云 OCR 调用框架：`server/adapters/ocr.py`
+- 已记录腾讯云 OCR 接入路径、实名认证卡点、CAM 子用户密钥方案和生产环境变量：`docs/tencent-ocr-setup.md`
+- 已完成腾讯云实名认证、OCR 服务开通、CAM 子用户 `bikengbao-ocr-prod` 创建，并将 OCR 密钥配置到 Vercel Production/Preview。
+- 已重新部署生产环境，线上 `/health` 已返回 `ocrProvider=tencent`。
 - 已补本地 Vercel 绑定和部署脚本：
   - `.vercel/project.json`
   - `scripts/deploy-vercel.sh`
@@ -103,7 +117,7 @@
 
 ## 当前未完成
 
-- 若先做网站版收费，支付宝真实支付仍需验证：
+- 若后续恢复支付宝自动收款，支付宝真实支付仍需验证：
   - 支付宝应用已上线或沙箱可用
   - 电脑网站支付/手机网站支付产品已开通
   - 用沙箱或小额真实订单跑通 `/v1/payments/alipay/notify` 异步通知和自动解锁
@@ -117,23 +131,25 @@
   - `WECHAT_PAY_API_V3_KEY`
   - 微信支付平台证书 PEM
   - 支付回调地址
-- 真实 OCR 需要提供：
-  - `TENCENT_SECRET_ID`
-  - `TENCENT_SECRET_KEY`
-  - OCR 地域和具体接口选择
+- 真实 OCR 已接入腾讯云：
+  - `BIKENGBAO_OCR_PROVIDER=tencent`
+  - `TENCENT_OCR_REGION=ap-guangzhou`
+  - `TENCENT_OCR_ACTION=GeneralBasicOCR`
+  - 密钥已配置到 Vercel，不写入仓库
 - 小程序正式提审仍需补：
   - 运营主体信息
   - 客服联系方式
   - 服务类目确认
   - 隐私政策发布日期和主体名称
   - 小程序后台 request/upload/download 合法域名配置
+- 扫码付款正式可收款还需提供真实收款码图片 URL，并配置 `MANUAL_PAYMENT_QR_IMAGE_URL`。
 
 ## 下一步建议
 
-1. 配置腾讯 OCR 生产变量，验证 `ocrProvider=tencent`。
-2. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
-3. 增加访问、上传、预览、支付点击、支付成功、复制话术等关键埋点。
-4. 明确运营主体、客服、隐私政策发布日期后再做正式投放或小程序提审。
+1. 用支付宝沙箱或小额真实订单验证付款后自动解锁报告。
+2. 增加访问、上传、预览、支付点击、支付成功、复制话术等关键埋点。
+3. 明确运营主体、客服、隐私政策发布日期后再做正式投放。
+4. 观察真实用户上传的报价单识别效果，必要时升级高精度 OCR 或表格 OCR。
 
 ## 本轮改动范围
 

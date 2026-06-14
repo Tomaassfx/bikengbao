@@ -1,4 +1,5 @@
 import cgi
+import hmac
 import json
 import re
 import uuid
@@ -10,7 +11,16 @@ from .adapters.file_storage import active_file_storage_provider, delete_upload, 
 from .adapters.ocr import extract_text
 from .adapters.payment import create_payment, parse_alipay_notification, parse_wechat_notification
 from .adapters.wechat_auth import resolve_wechat_session
-from .config import AI_PROVIDER, AUTH_PROVIDER, HOST, MAX_UPLOAD_BYTES, OCR_PROVIDER, PAYMENT_PROVIDER, PORT
+from .config import (
+    AI_PROVIDER,
+    AUTH_PROVIDER,
+    BIKENGBAO_ADMIN_CONFIRM_TOKEN,
+    HOST,
+    MAX_UPLOAD_BYTES,
+    OCR_PROVIDER,
+    PAYMENT_PROVIDER,
+    PORT,
+)
 from .rules import generate_report
 from .storage import active_db_provider, ensure_storage, load_db, now_ms, now_text, reports_for_user, save_db
 
@@ -80,6 +90,11 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
 
         if route == "/v1/orders":
             self.handle_create_order(user_id)
+            return
+
+        admin_confirm_match = re.fullmatch(r"/v1/admin/orders/([^/]+)/confirm-payment", route)
+        if admin_confirm_match:
+            self.handle_admin_confirm_payment(admin_confirm_match.group(1))
             return
 
         if route == "/v1/payments/wechat/notify":
@@ -248,6 +263,9 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             self.send_error_json(502, str(error))
             return
         order["paymentId"] = payment.get("paymentId", "")
+        if payment.get("mode") == "manual_qr":
+            order["manualReference"] = payment.get("reference", "")
+            order["paymentExpiresInMinutes"] = payment.get("expiresInMinutes", 0)
         db["orders"][order["id"]] = order
         save_db(db)
         self.send_json({"order": order, "payment": payment}, status=201)
@@ -277,6 +295,49 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         report["unlockedAt"] = now_text()
         save_db(db)
         self.send_json({"order": order, "report": self.public_report(report)})
+
+    def handle_admin_confirm_payment(self, order_id: str) -> None:
+        if not self.admin_authorized():
+            self.send_error_json(401, "后台确认密钥无效")
+            return
+
+        payload = self.read_json()
+        db = load_db()
+        order = db["orders"].get(order_id)
+        if not order:
+            self.send_error_json(404, "订单不存在")
+            return
+        if order.get("provider") not in {"manual", "manual_qr"}:
+            self.send_error_json(400, "该订单不是人工确认支付订单")
+            return
+
+        expected_amount = int(order.get("amount") or 0)
+        try:
+            paid_amount = int(payload.get("paidAmount") or expected_amount)
+        except (TypeError, ValueError):
+            self.send_error_json(400, "付款金额格式不正确")
+            return
+        if paid_amount != expected_amount:
+            self.send_error_json(400, f"付款金额不匹配，应为 {expected_amount} 元")
+            return
+
+        report = db["reports"].get(order["reportId"])
+        if not report:
+            self.send_error_json(404, "报告不存在")
+            return
+
+        if order.get("status") != "paid":
+            order["status"] = "paid"
+            order["paidAt"] = now_text()
+        order["manualConfirmedAt"] = order.get("manualConfirmedAt") or now_text()
+        order["manualConfirmedBy"] = str(payload.get("confirmedBy") or "admin")[:80]
+        order["transactionId"] = str(payload.get("transactionId") or order.get("manualReference") or "")[:120]
+        order["paymentStatus"] = "MANUAL_CONFIRMED"
+        order["paymentNote"] = str(payload.get("note") or "")[:240]
+        report["unlocked"] = True
+        report["unlockedAt"] = report.get("unlockedAt") or now_text()
+        save_db(db)
+        self.send_json({"order": self.public_order(order), "report": self.public_report(report)})
 
     def handle_get_order(self, user_id: str, order_id: str) -> None:
         db = load_db()
@@ -381,6 +442,16 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             return auth.replace("Bearer demo-token-", "", 1)
         return DEFAULT_USER_ID
 
+    def admin_authorized(self) -> bool:
+        if not BIKENGBAO_ADMIN_CONFIRM_TOKEN:
+            return False
+        auth = self.headers.get("Authorization", "")
+        provided = ""
+        if auth.startswith("Bearer "):
+            provided = auth.replace("Bearer ", "", 1)
+        provided = provided or self.headers.get("X-Admin-Token", "")
+        return hmac.compare_digest(provided, BIKENGBAO_ADMIN_CONFIRM_TOKEN)
+
     def read_json(self) -> Dict[str, Any]:
         body = self.read_raw_body().decode("utf-8")
         try:
@@ -419,6 +490,8 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             "status": order.get("status", ""),
             "provider": order.get("provider", ""),
             "paymentId": order.get("paymentId", ""),
+            "manualReference": order.get("manualReference", ""),
+            "paymentStatus": order.get("paymentStatus", ""),
             "createdAt": order.get("createdAt", ""),
             "paidAt": order.get("paidAt", ""),
         }

@@ -8,6 +8,7 @@ Page({
     visibleRisks: [],
     unlocked: false,
     selectedPrice: 59,
+    manualPayment: null,
     paying: false
   },
 
@@ -73,9 +74,27 @@ Page({
           url: `/v1/orders/${order.order.id}/mock-pay`,
           method: "POST"
         });
-      } else {
+      } else if (order.payment.mode === "manual_qr") {
+        this.setData({
+          manualPayment: {
+            orderId: order.order.id,
+            amountText: order.payment.amountText,
+            qrImageUrl: order.payment.qrImageUrl,
+            accountName: order.payment.accountName,
+            accountHint: order.payment.accountHint,
+            reference: order.payment.reference,
+            instructions: order.payment.instructions || []
+          }
+        });
+        wx.showToast({ title: "扫码后等待人工确认", icon: "none" });
+        this.waitForUnlock();
+        return;
+      } else if (order.payment.mode === "wechat") {
         await this.requestPayment(order.payment.params);
         await this.waitForUnlock();
+      } else {
+        wx.showToast({ title: "当前支付方式请在网页端完成", icon: "none" });
+        return;
       }
 
       const refreshed = await api.request({ url: `/v1/reports/${this.data.reportId}` });
@@ -107,6 +126,37 @@ Page({
       }
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
+  },
+
+  async refreshManualPayment() {
+    const orderId = this.data.manualPayment && this.data.manualPayment.orderId;
+    if (!orderId) return;
+    try {
+      const result = await api.request({ url: `/v1/orders/${orderId}` });
+      if (result.order && result.order.status === "paid") {
+        this.setData({ manualPayment: null });
+        this.applyReport(result.report);
+        wx.showToast({ title: "已解锁完整报告", icon: "success" });
+        return;
+      }
+      wx.showToast({ title: "还未确认到账", icon: "none" });
+    } catch (error) {
+      wx.showToast({ title: error.message || "状态查询失败", icon: "none" });
+    }
+  },
+
+  copyManualPayment() {
+    const payment = this.data.manualPayment;
+    if (!payment) return;
+    wx.setClipboardData({
+      data: [
+        "避坑宝报告解锁付款",
+        `金额：${payment.amountText} 元`,
+        `付款备注码：${payment.reference}`,
+        `收款方：${payment.accountName}`,
+        `订单号：${payment.orderId}`
+      ].join("\n")
+    });
   },
 
   copyText(event) {

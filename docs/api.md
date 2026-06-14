@@ -11,6 +11,7 @@ Vercel 部署后默认同源访问：
 - `POST /v1/orders`
 - `GET /v1/orders/{orderId}`
 - `POST /v1/orders/{orderId}/mock-pay`
+- `POST /v1/admin/orders/{orderId}/confirm-payment`
 - `POST /v1/payments/wechat/notify`
 - `POST /v1/payments/alipay/notify`
 - `GET /v1/reports`
@@ -26,7 +27,7 @@ Vercel 部署后默认同源访问：
   "authProvider": "wechat",
   "aiProvider": "deepseek",
   "ocrProvider": "tencent",
-  "paymentProvider": "alipay",
+  "paymentProvider": "manual_qr",
   "dbProvider": "postgres",
   "fileStorageProvider": "blob"
 }
@@ -162,6 +163,51 @@ Authorization: Bearer demo-token-wx_xxx
 `POST /v1/orders/{orderId}/mock-pay`
 
 仅当 `BIKENGBAO_PAYMENT_PROVIDER=mock` 时允许调用。正式支付环境会拒绝该接口，避免绕过真实支付。
+
+扫码付款 + 人工确认：
+
+`BIKENGBAO_PAYMENT_PROVIDER=manual_qr` 时，`POST /v1/orders` 会返回：
+
+```json
+{
+  "payment": {
+    "mode": "manual_qr",
+    "qrImageUrl": "https://example.com/receipt-qr.png",
+    "accountName": "避坑宝运营",
+    "accountHint": "支付宝或微信收款码",
+    "reference": "BKB-ORDER1234",
+    "amountText": "59.00",
+    "instructions": ["付款备注请填写：BKB-ORDER1234"]
+  }
+}
+```
+
+后台人工确认到账：
+
+`POST /v1/admin/orders/{orderId}/confirm-payment`
+
+Header：
+
+```http
+Authorization: Bearer <BIKENGBAO_ADMIN_CONFIRM_TOKEN>
+```
+
+请求：
+
+```json
+{ "paidAmount": 59, "transactionId": "收款流水号", "note": "备注码匹配" }
+```
+
+确认成功后订单变为 `paid`，对应报告会自动解锁。生产环境需要配置：
+
+- `BIKENGBAO_PAYMENT_PROVIDER=manual_qr`
+- `MANUAL_PAYMENT_QR_IMAGE_URL`
+- `MANUAL_PAYMENT_ACCOUNT_NAME`
+- `MANUAL_PAYMENT_ACCOUNT_HINT`
+- `MANUAL_PAYMENT_NOTE_PREFIX`
+- `BIKENGBAO_ADMIN_CONFIRM_TOKEN`
+
+内部确认页：`/admin.html`。该页面不挂前台导航，必须输入后台确认密钥才能操作。
 
 微信支付回调：
 

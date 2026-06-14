@@ -18,6 +18,11 @@ from ..config import (
     ALIPAY_PUBLIC_KEY,
     ALIPAY_PUBLIC_KEY_PATH,
     ALIPAY_RETURN_URL,
+    MANUAL_PAYMENT_ACCOUNT_HINT,
+    MANUAL_PAYMENT_ACCOUNT_NAME,
+    MANUAL_PAYMENT_EXPIRES_MINUTES,
+    MANUAL_PAYMENT_NOTE_PREFIX,
+    MANUAL_PAYMENT_QR_IMAGE_URL,
     PAYMENT_PROVIDER,
     WECHAT_APP_ID,
     WECHAT_MCH_ID,
@@ -46,7 +51,37 @@ def create_payment(order: Dict[str, Any]) -> Dict[str, Any]:
     if PAYMENT_PROVIDER == "alipay":
         return create_alipay_page_payment(order)
 
+    if PAYMENT_PROVIDER in {"manual", "manual_qr"}:
+        return create_manual_qr_payment(order)
+
     raise RuntimeError(f"Payment provider {PAYMENT_PROVIDER} is not configured.")
+
+
+def create_manual_qr_payment(order: Dict[str, Any]) -> Dict[str, Any]:
+    reference = manual_payment_reference(order)
+    amount = int(order["amount"])
+    return {
+        "mode": "manual_qr",
+        "paymentId": reference,
+        "qrImageUrl": MANUAL_PAYMENT_QR_IMAGE_URL,
+        "accountName": MANUAL_PAYMENT_ACCOUNT_NAME,
+        "accountHint": MANUAL_PAYMENT_ACCOUNT_HINT,
+        "reference": reference,
+        "amountText": f"{amount:.2f}",
+        "expiresInMinutes": MANUAL_PAYMENT_EXPIRES_MINUTES,
+        "instructions": [
+            "扫码后请按订单金额付款，不要合并多笔订单。",
+            f"付款备注请填写：{reference}",
+            "人工核对到账后，报告会自动解锁；通常在运营在线时几分钟内完成。",
+        ],
+    }
+
+
+def manual_payment_reference(order: Dict[str, Any]) -> str:
+    raw_id = str(order.get("id", "")).replace("-", "")
+    short_id = raw_id[:10].upper() or uuid.uuid4().hex[:10].upper()
+    prefix = "".join(str(MANUAL_PAYMENT_NOTE_PREFIX or "BKB").split()).upper()
+    return f"{prefix}-{short_id}"
 
 
 def create_wechat_jsapi_payment(order: Dict[str, Any]) -> Dict[str, Any]:

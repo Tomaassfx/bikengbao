@@ -8,8 +8,8 @@
 - `DATABASE_URL`
 - `BIKENGBAO_FILE_STORAGE_PROVIDER=blob`
 - `BLOB_READ_WRITE_TOKEN`
-- Vercel Production/Preview 已配置支付宝网站支付所需变量：`BIKENGBAO_PAYMENT_PROVIDER=alipay`、`ALIPAY_APP_ID`、`ALIPAY_APP_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY`、`ALIPAY_GATEWAY`、`ALIPAY_NOTIFY_URL`、`ALIPAY_RETURN_URL`。
-- `https://bikengbao.lifeadmin-ai.xyz/health` 已验证返回 `paymentProvider=alipay`、`dbProvider=postgres`、`fileStorageProvider=blob`。
+- 当前收费闭环先切到扫码付款 + 人工确认：`BIKENGBAO_PAYMENT_PROVIDER=manual_qr`，并通过后台确认密钥解锁报告。
+- `https://bikengbao.lifeadmin-ai.xyz/health` 已验证返回 `dbProvider=postgres`、`fileStorageProvider=blob`。
 
 ## 微信登录
 
@@ -37,6 +37,25 @@
 - `ALIPAY_GATEWAY=https://openapi.alipay.com/gateway.do`
 - `ALIPAY_NOTIFY_URL=https://bikengbao.lifeadmin-ai.xyz/v1/payments/alipay/notify`
 - `ALIPAY_RETURN_URL=https://bikengbao.lifeadmin-ai.xyz/`
+
+## 扫码付款 + 人工确认
+
+- `BIKENGBAO_PAYMENT_PROVIDER=manual_qr`
+- `MANUAL_PAYMENT_QR_IMAGE_URL`
+- `MANUAL_PAYMENT_ACCOUNT_NAME=避坑宝运营`
+- `MANUAL_PAYMENT_ACCOUNT_HINT=支付宝或微信收款码`
+- `MANUAL_PAYMENT_NOTE_PREFIX=BKB`
+- `MANUAL_PAYMENT_EXPIRES_MINUTES=30`
+- `BIKENGBAO_ADMIN_CONFIRM_TOKEN`
+
+后台确认页：
+
+- `https://bikengbao.lifeadmin-ai.xyz/admin.html`
+
+确认接口：
+
+- `POST /v1/admin/orders/{orderId}/confirm-payment`
+- Header：`Authorization: Bearer <BIKENGBAO_ADMIN_CONFIRM_TOKEN>`
 
 ## 腾讯云 OCR
 

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>避坑宝后台确认</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      body {
+        background: #f6f7f3;
+      }
+
+      .admin-shell {
+        width: min(720px, 100%);
+        margin: 0 auto;
+        padding: clamp(18px, 4vw, 40px);
+      }
+
+      .admin-panel {
+        display: grid;
+        gap: 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: var(--shadow);
+        padding: clamp(20px, 4vw, 32px);
+      }
+
+      .admin-panel h1 {
+        font-size: clamp(28px, 4vw, 42px);
+      }
+
+      .admin-result {
+        display: none;
+        border-radius: var(--radius-tight);
+        background: var(--surface-tint);
+        color: var(--primary-ink);
+        padding: 14px;
+        white-space: pre-wrap;
+      }
+
+      .admin-result.visible {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="admin-shell">
+      <section class="admin-panel">
+        <div>
+          <span class="eyebrow">内部工具</span>
+          <h1>人工确认收款</h1>
+          <p>核对收款 App 到账记录后，再确认订单。确认成功会立刻解锁对应报告。</p>
+        </div>
+        <form id="confirmForm">
+          <label class="field">
+            <span>后台确认密钥</span>
+            <input name="token" type="password" autocomplete="current-password" placeholder="BIKENGBAO_ADMIN_CONFIRM_TOKEN" required />
+          </label>
+          <label class="field">
+            <span>订单号</span>
+            <input name="orderId" type="text" placeholder="用户付款页显示的订单号" required />
+          </label>
+          <label class="field">
+            <span>到账金额</span>
+            <input name="paidAmount" type="number" min="1" step="1" placeholder="59" required />
+          </label>
+          <label class="field">
+            <span>流水号或备注</span>
+            <input name="transactionId" type="text" placeholder="可填写支付宝/微信流水号" />
+          </label>
+          <label class="field">
+            <span>确认备注</span>
+            <textarea name="note" rows="4" placeholder="例如：支付宝收款码到账，备注码匹配"></textarea>
+          </label>
+          <div class="form-actions">
+            <button class="primary-button" type="submit">确认到账并解锁</button>
+            <button class="ghost-button" type="button" id="saveToken">仅本机记住密钥</button>
+          </div>
+        </form>
+        <pre class="admin-result" id="result"></pre>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#confirmForm");
+      const result = document.querySelector("#result");
+      const tokenInput = form.elements.token;
+      tokenInput.value = localStorage.getItem("bikengbao_admin_confirm_token") || "";
+
+      document.querySelector("#saveToken").addEventListener("click", () => {
+        localStorage.setItem("bikengbao_admin_confirm_token", tokenInput.value);
+        showResult("已在本机浏览器保存后台确认密钥。");
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(form).entries());
+        try {
+          showResult("正在确认...");
+          const response = await fetch(`/v1/admin/orders/${encodeURIComponent(data.orderId)}/confirm-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${data.token}`
+            },
+            body: JSON.stringify({
+              paidAmount: Number(data.paidAmount),
+              transactionId: data.transactionId,
+              note: data.note,
+              confirmedBy: "admin.html"
+            })
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || `确认失败：${response.status}`);
+          showResult(`确认成功\n订单：${payload.order.id}\n状态：${payload.order.status}\n报告：${payload.order.reportId}\n已解锁：${payload.report.unlocked ? "是" : "否"}`);
+        } catch (error) {
+          showResult(error.message || "确认失败");
+        }
+      });
+
+      function showResult(message) {
+        result.textContent = message;
+        result.classList.add("visible");
+      }
+    </script>
+  </body>
+</html>

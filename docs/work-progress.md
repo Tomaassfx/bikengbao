@@ -13,11 +13,11 @@
 ## 当前代码状态
 
 - 当前本地分支：`main`
-- 本轮前端动效优化基于提交：`1701f64 Record latest Vercel deployment status`
+- 当前功能提交：`bf37051 Add dual manual payment channels`
 - Vercel 项目 `bikengbao` 已连接 GitHub 仓库 `Tomaassfx/bikengbao`，后续 push 到 `main` 会触发 Vercel 自动部署。
 - 生产域名保持：`https://bikengbao.lifeadmin-ai.xyz` 和 `https://bikengbao.vercel.app`
-- 上一轮功能代码已推送 GitHub，并通过 Vercel Git 自动部署到生产环境。
-- 本轮腾讯云 OCR 环境变量通过 Vercel CLI 写入 Production/Preview，并已手动触发生产部署生效。
+- 双收款码功能已推送 GitHub 并手动部署到 Vercel Production。
+- 当前生产部署：`dpl_9T4NgYDaCJx2uFMrkBf86BSvDeyP`，状态 `READY`。
 
 ## 已完成
 
@@ -33,7 +33,8 @@
   - `/v1/admin/orders/{orderId}/confirm-payment` 后台确认接口
   - `/admin.html` 内部确认页
   - 后台确认到账后自动解锁报告
-- 已在 Vercel 项目 `bikengbao` 添加支付宝生产变量，并验证线上 `/health` 返回 `paymentProvider=alipay`。
+- 支付宝、微信两张个人收款码已上传 Vercel Blob，图片不进入公开 GitHub 仓库。
+- 临时付款资产上传 token 已删除，上传接口当前不可用；后台确认密钥未重置。
 - 已补腾讯云 OCR 调用框架：`server/adapters/ocr.py`
 - 已记录腾讯云 OCR 接入路径、实名认证卡点、CAM 子用户密钥方案和生产环境变量：`docs/tencent-ocr-setup.md`
 - 已完成腾讯云实名认证、OCR 服务开通、CAM 子用户 `bikengbao-ocr-prod` 创建，并将 OCR 密钥配置到 Vercel Production/Preview。
@@ -82,14 +83,17 @@
 - `python3 -m compileall server api` 通过
 - `python3 -m unittest discover -s tests` 通过
 - `python3 -m compileall -q server api tests` 通过
-- `https://bikengbao.lifeadmin-ai.xyz/health` 返回：`aiProvider=deepseek`、`ocrProvider=mock`、`paymentProvider=alipay`、`dbProvider=postgres`、`fileStorageProvider=blob`
+- `https://bikengbao.lifeadmin-ai.xyz/health` 返回：`aiProvider=deepseek`、`authProvider=mock`、`ocrProvider=tencent`、`paymentProvider=manual_qr`、`dbProvider=postgres`、`fileStorageProvider=blob`
 - `https://bikengbao.vercel.app/health` 返回同样生产状态。
 - `git diff --check` 通过
 - 机械检查通过：未发现 `—`、旧紫色 `#6d4b7f`、旧蓝色变量、旧 `surface-warm`、旧 `#f4c05e`、明显残留 `border-radius: 8px`
-- Vercel 自动部署已验证：部署来源为 GitHub `main`，本轮功能提交信息为 `Polish premium audit UI motion`。
+- Vercel Git 连接已验证：部署来源为 GitHub `main`；当前双支付功能提交为 `bf37051 Add dual manual payment channels`，另已手动部署到 Production。
 - 线上静态资源已验证：`app.js` 包含 `desk-matrix` / `hydrateMotion`，`styles.css` 包含 `desk-scan` / `page-sweep` / `reveal-ready`。
 - 线上 API smoke 已通过：认证、生成预览报告、历史读取、删除测试报告均成功，报告返回 `aiStatus=deepseek_ok`。
 - Vercel 最近 2 分钟生产错误日志为空；此前 1 条 504 为本轮第一次 smoke 脚本超时测试产生，后续重跑通过。
+- 双收款码单元测试共 7 个，全部通过。
+- 生产 API smoke 已验证：订单返回 `alipay`、`wechat` 两个渠道，两个 Blob URL 均匹配，备注码存在。
+- 临时付款资产上传接口在线上返回 `401`，确认一次性 token 已删除。
 
 ### 浏览器和本地链路验证
 
@@ -115,8 +119,22 @@
 - Chrome 移动宽度检查通过：
   - 首页和历史页无明显横向溢出
   - 导航、CTA、历史操作按钮没有挤出容器
+- 双收款码浏览器检查通过：
+  - 支付宝默认选中，二维码和收款方正确
+  - 切换微信后二维码 URL、收款方和选中状态同步变化
+  - 桌面无控制台错误；390px 移动宽度无横向溢出
 
 ## 当前未完成
+
+### 网站人工收费上线阻塞项
+
+1. 用户身份隔离：当前 `authProvider=mock`，网页统一提交 `web-demo`，不同用户可能共享或丢失报告历史。公开收费前必须改成稳定的匿名会话，后续再升级短信登录。
+2. 后台确认密钥：Vercel 中已有加密值，但运营方未掌握明文。本轮按要求未重置，因此暂时无法使用 `/admin.html` 人工确认订单。
+3. 真实付款闭环：需要用一笔最低 29 元真实订单验证扫码、备注码、后台确认和报告解锁。
+4. 合规信息：隐私政策、用户协议仍需填写真实运营主体、发布日期、客服联系方式和退款规则。
+5. 接口防刷：文件上传、腾讯 OCR、DeepSeek 和报告生成接口仍缺少生产限流与成本保护。
+
+### 后续自动支付与小程序
 
 - 若后续恢复支付宝自动收款，支付宝真实支付仍需验证：
   - 支付宝应用已上线或沙箱可用
@@ -146,14 +164,15 @@
 
 ## 下一步建议
 
-1. 用一笔小额真实付款验证扫码、备注码、后台确认和报告解锁。
-2. 增加访问、上传、预览、支付点击、支付成功、复制话术等关键埋点。
-3. 明确运营主体、客服、隐私政策发布日期后再做正式投放。
-4. 观察真实用户上传的报价单识别效果，必要时升级高精度 OCR 或表格 OCR。
+1. 先实现网站匿名用户隔离，阻止不同用户互相看到报告。
+2. 运营方准备好保存密钥后，再重置 `BIKENGBAO_ADMIN_CONFIRM_TOKEN`。
+3. 用一笔 29 元真实付款验证扫码、备注码、后台确认和报告解锁。
+4. 填写运营主体、客服、发布日期、退款规则，并增加接口限流后再公开投放。
+5. 增加访问、上传、预览、支付点击、支付成功、复制话术等关键埋点。
 
-## 本轮改动范围
+## 最近一轮功能改动范围
 
-- `app.js`
-- `styles.css`
-- `docs/work-progress.md`
-- `docs/production-checklist.md`
+- 支付渠道和后端：`server/adapters/payment.py`、`server/app.py`、`server/config.py`
+- 网页和小程序支付界面：`app.js`、`styles.css`、`miniprogram/pages/report/*`
+- 配置和文档：`.env.example`、`docs/api.md`、`docs/production-env.md`、`docs/production-checklist.md`、`docs/work-progress.md`
+- 测试：`tests/test_manual_payment.py`

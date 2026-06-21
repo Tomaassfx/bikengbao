@@ -18,11 +18,13 @@ from ..config import (
     ALIPAY_PUBLIC_KEY,
     ALIPAY_PUBLIC_KEY_PATH,
     ALIPAY_RETURN_URL,
-    MANUAL_PAYMENT_ACCOUNT_HINT,
-    MANUAL_PAYMENT_ACCOUNT_NAME,
+    MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME,
+    MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL,
     MANUAL_PAYMENT_EXPIRES_MINUTES,
     MANUAL_PAYMENT_NOTE_PREFIX,
     MANUAL_PAYMENT_QR_IMAGE_URL,
+    MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME,
+    MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL,
     PAYMENT_PROVIDER,
     WECHAT_APP_ID,
     WECHAT_MCH_ID,
@@ -60,21 +62,45 @@ def create_payment(order: Dict[str, Any]) -> Dict[str, Any]:
 def create_manual_qr_payment(order: Dict[str, Any]) -> Dict[str, Any]:
     reference = manual_payment_reference(order)
     amount = int(order["amount"])
+    channels = manual_payment_channels()
+    primary_channel = next((channel for channel in channels if channel["qrImageUrl"]), channels[0])
     return {
         "mode": "manual_qr",
         "paymentId": reference,
-        "qrImageUrl": MANUAL_PAYMENT_QR_IMAGE_URL,
-        "accountName": MANUAL_PAYMENT_ACCOUNT_NAME,
-        "accountHint": MANUAL_PAYMENT_ACCOUNT_HINT,
+        "channels": channels,
+        "qrImageUrl": primary_channel["qrImageUrl"],
+        "accountName": primary_channel["accountName"],
+        "accountHint": primary_channel["accountHint"],
         "reference": reference,
         "amountText": f"{amount:.2f}",
         "expiresInMinutes": MANUAL_PAYMENT_EXPIRES_MINUTES,
         "instructions": [
+            "选择支付宝或微信支付，并使用对应收款码完成付款。",
             "扫码后请按订单金额付款，不要合并多笔订单。",
             f"付款备注请填写：{reference}",
             "人工核对到账后，报告会自动解锁；通常在运营在线时几分钟内完成。",
         ],
     }
+
+
+def manual_payment_channels() -> list[Dict[str, str]]:
+    legacy_qr_url = MANUAL_PAYMENT_QR_IMAGE_URL
+    return [
+        {
+            "id": "alipay",
+            "label": "支付宝",
+            "qrImageUrl": MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL or legacy_qr_url,
+            "accountName": MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME,
+            "accountHint": "支付宝收款码",
+        },
+        {
+            "id": "wechat",
+            "label": "微信支付",
+            "qrImageUrl": MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL,
+            "accountName": MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME,
+            "accountHint": "微信收款码",
+        },
+    ]
 
 
 def manual_payment_reference(order: Dict[str, Any]) -> str:

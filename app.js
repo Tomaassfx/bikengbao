@@ -192,12 +192,15 @@ async function unlockReport() {
 
     if (orderPayload.payment?.mode === "manual_qr") {
       if (paymentWindow) paymentWindow.close();
+      const channels = manualPaymentChannels(orderPayload.payment);
       state.pendingOrder = {
         id: orderPayload.order.id,
         reportId: orderPayload.order.reportId,
         amount: orderPayload.order.amount,
         status: orderPayload.order.status,
         mode: "manual_qr",
+        channels,
+        selectedChannelId: channels.find((channel) => channel.qrImageUrl)?.id || channels[0]?.id || "alipay",
         qrImageUrl: orderPayload.payment.qrImageUrl,
         accountName: orderPayload.payment.accountName,
         accountHint: orderPayload.payment.accountHint,
@@ -789,6 +792,8 @@ function renderPaywall(report) {
 function renderManualPaymentBox() {
   const order = state.pendingOrder;
   if (order?.mode !== "manual_qr") return "";
+  const channels = order.channels?.length ? order.channels : manualPaymentChannels(order);
+  const selectedChannel = channels.find((channel) => channel.id === order.selectedChannelId) || channels[0] || {};
   const instructions = order.instructions?.length ? order.instructions : ["扫码付款后等待人工确认。"];
   const statusText = order.status === "paid" ? "已确认" : "待人工确认";
   return `
@@ -800,15 +805,32 @@ function renderManualPaymentBox() {
         </div>
         <small>${escapeHtml(statusText)}</small>
       </div>
+      <div class="payment-channel-switch" role="group" aria-label="选择付款方式">
+        ${channels
+          .map(
+            (channel) => `
+              <button
+                class="payment-channel ${channel.id} ${selectedChannel.id === channel.id ? "selected" : ""}"
+                type="button"
+                data-payment-channel="${escapeHtml(channel.id)}"
+                aria-pressed="${selectedChannel.id === channel.id}"
+              >
+                <span>${channel.id === "alipay" ? "支" : "微"}</span>
+                ${escapeHtml(channel.label)}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
       <div class="manual-payment-body">
         ${
-          order.qrImageUrl
-            ? `<img src="${escapeHtml(order.qrImageUrl)}" alt="避坑宝收款二维码" loading="lazy" />`
-            : `<div class="qr-placeholder">${icon("qr-code")}<span>收款码待配置</span></div>`
+          selectedChannel.qrImageUrl
+            ? `<a class="qr-image-link" href="${escapeHtml(selectedChannel.qrImageUrl)}" target="_blank" rel="noreferrer" title="打开收款码原图"><img src="${escapeHtml(selectedChannel.qrImageUrl)}" alt="${escapeHtml(selectedChannel.label || "避坑宝")}收款二维码" loading="lazy" /></a>`
+            : `<div class="qr-placeholder">${icon("qr-code")}<span>${escapeHtml(selectedChannel.label || "当前方式")}收款码待配置</span></div>`
         }
         <div class="manual-payment-detail">
-          <span>${escapeHtml(order.accountHint || "收款码")}</span>
-          <strong>${escapeHtml(order.accountName || "避坑宝运营")}</strong>
+          <span>${escapeHtml(selectedChannel.accountHint || order.accountHint || "收款码")}</span>
+          <strong>${escapeHtml(selectedChannel.accountName || order.accountName || "避坑宝运营")}</strong>
           <label>付款备注码</label>
           <code>${escapeHtml(order.reference || order.id)}</code>
           <div class="manual-actions">
@@ -824,13 +846,29 @@ function renderManualPaymentBox() {
   `;
 }
 
+function manualPaymentChannels(payment) {
+  if (Array.isArray(payment.channels) && payment.channels.length) return payment.channels;
+  return [
+    {
+      id: "alipay",
+      label: "支付宝",
+      qrImageUrl: payment.qrImageUrl || "",
+      accountName: payment.accountName || "避坑宝运营",
+      accountHint: payment.accountHint || "收款码"
+    }
+  ];
+}
+
 function manualPaymentCopyText() {
   const order = state.pendingOrder || {};
+  const channels = order.channels?.length ? order.channels : manualPaymentChannels(order);
+  const selectedChannel = channels.find((channel) => channel.id === order.selectedChannelId) || channels[0] || {};
   return [
     `避坑宝报告解锁付款`,
+    `付款方式：${selectedChannel.label || "扫码支付"}`,
     `金额：${money(order.amount)} 元`,
     `付款备注码：${order.reference || order.id || ""}`,
-    `收款方：${order.accountName || "避坑宝运营"}`,
+    `收款方：${selectedChannel.accountName || order.accountName || "避坑宝运营"}`,
     `订单号：${order.id || ""}`
   ].join("\n");
 }
@@ -933,6 +971,14 @@ function bindEvents() {
   document.querySelectorAll("[data-price]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedPrice = Number(button.dataset.price);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-payment-channel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state.pendingOrder) return;
+      state.pendingOrder.selectedChannelId = button.dataset.paymentChannel;
       render();
     });
   });

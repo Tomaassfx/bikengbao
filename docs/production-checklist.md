@@ -9,7 +9,7 @@
 - DeepSeek：密钥只放环境变量，不要写入代码、README 或小程序配置。
 - 支付：已补微信支付 JSAPI 下单、支付参数生成、回调验签/解密框架。生产环境需配置微信商户号、私钥、平台证书和 API v3 key。
 - 支付宝：已补网站版支付宝支付框架。由于电脑网站支付需要 ICP 备案，当前先不作为上线收费主路径。
-- 扫码付款：已补 `manual_qr` 收款码 + 人工确认路径。生产环境配置 `BIKENGBAO_PAYMENT_PROVIDER=manual_qr`、收款码 URL 和 `BIKENGBAO_ADMIN_CONFIRM_TOKEN` 后启用。
+- 扫码付款：已补 `manual_qr` 支付宝/微信双收款码 + 人工确认路径。生产环境配置两个收款码 URL 和 `BIKENGBAO_ADMIN_CONFIRM_TOKEN` 后启用。
 - 登录：已补微信 `code2session` 框架。生产环境配置 `BIKENGBAO_AUTH_PROVIDER=wechat`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET` 后启用。
 - 域名：Web 后端必须部署到 HTTPS；微信小程序上线时，还要将该域名加入 request/uploadFile 合法域名。
 

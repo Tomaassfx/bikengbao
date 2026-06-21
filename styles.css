@@ -1298,19 +1298,87 @@ p {
   white-space: nowrap;
 }
 
+.payment-channel-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.payment-channel {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-tight);
+  background: rgba(255, 255, 255, 0.07);
+  color: #dce6e3;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    border-color var(--motion),
+    background var(--motion),
+    color var(--motion);
+}
+
+.payment-channel span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 14px;
+}
+
+.payment-channel.alipay.selected {
+  border-color: #6eaaff;
+  background: rgba(22, 119, 255, 0.2);
+  color: #dceaff;
+}
+
+.payment-channel.alipay.selected span {
+  background: #1677ff;
+}
+
+.payment-channel.wechat.selected {
+  border-color: #64d99a;
+  background: rgba(7, 193, 96, 0.18);
+  color: #d9f8e8;
+}
+
+.payment-channel.wechat.selected span {
+  background: #07c160;
+}
+
 .manual-payment-body {
   align-items: stretch;
 }
 
-.manual-payment img,
+.qr-image-link,
 .qr-placeholder {
-  width: 154px;
+  width: 220px;
   aspect-ratio: 1;
-  flex: 0 0 154px;
+  flex: 0 0 220px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-tight);
   background: #fff;
-  object-fit: cover;
+}
+
+.qr-image-link {
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+}
+
+.qr-image-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .qr-placeholder {
@@ -1926,7 +1994,7 @@ p {
     flex-direction: column;
   }
 
-  .manual-payment img,
+  .qr-image-link,
   .qr-placeholder {
     width: min(220px, 100%);
     flex-basis: auto;

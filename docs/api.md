@@ -172,7 +172,20 @@ Authorization: Bearer demo-token-wx_xxx
 {
   "payment": {
     "mode": "manual_qr",
-    "qrImageUrl": "https://example.com/receipt-qr.png",
+    "channels": [
+      {
+        "id": "alipay",
+        "label": "支付宝",
+        "qrImageUrl": "https://example.com/alipay-qr.png",
+        "accountName": "支付宝收款方"
+      },
+      {
+        "id": "wechat",
+        "label": "微信支付",
+        "qrImageUrl": "https://example.com/wechat-qr.png",
+        "accountName": "微信收款方"
+      }
+    ],
     "accountName": "避坑宝运营",
     "accountHint": "支付宝或微信收款码",
     "reference": "BKB-ORDER1234",
@@ -201,11 +214,16 @@ Authorization: Bearer <BIKENGBAO_ADMIN_CONFIRM_TOKEN>
 确认成功后订单变为 `paid`，对应报告会自动解锁。生产环境需要配置：
 
 - `BIKENGBAO_PAYMENT_PROVIDER=manual_qr`
-- `MANUAL_PAYMENT_QR_IMAGE_URL`
+- `MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL`
+- `MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL`
+- `MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME`
+- `MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME`
 - `MANUAL_PAYMENT_ACCOUNT_NAME`
 - `MANUAL_PAYMENT_ACCOUNT_HINT`
 - `MANUAL_PAYMENT_NOTE_PREFIX`
 - `BIKENGBAO_ADMIN_CONFIRM_TOKEN`
+
+`MANUAL_PAYMENT_QR_IMAGE_URL` 仅用于兼容旧版单收款码配置，新部署应使用两个渠道变量。
 
 内部确认页：`/admin.html`。该页面不挂前台导航，必须输入后台确认密钥才能操作。
 

@@ -75,6 +75,16 @@ Page({
           method: "POST"
         });
       } else if (order.payment.mode === "manual_qr") {
+        const channels = order.payment.channels && order.payment.channels.length
+          ? order.payment.channels
+          : [{
+              id: "alipay",
+              label: "支付宝",
+              qrImageUrl: order.payment.qrImageUrl,
+              accountName: order.payment.accountName,
+              accountHint: order.payment.accountHint
+            }];
+        const selectedChannel = channels.find((channel) => channel.qrImageUrl) || channels[0];
         this.setData({
           manualPayment: {
             orderId: order.order.id,
@@ -83,7 +93,10 @@ Page({
             accountName: order.payment.accountName,
             accountHint: order.payment.accountHint,
             reference: order.payment.reference,
-            instructions: order.payment.instructions || []
+            instructions: order.payment.instructions || [],
+            channels,
+            selectedChannelId: selectedChannel.id,
+            selectedChannel
           }
         });
         wx.showToast({ title: "扫码后等待人工确认", icon: "none" });
@@ -145,15 +158,31 @@ Page({
     }
   },
 
+  selectManualChannel(event) {
+    const payment = this.data.manualPayment;
+    if (!payment) return;
+    const selectedChannelId = event.currentTarget.dataset.channel;
+    const selectedChannel = payment.channels.find((channel) => channel.id === selectedChannelId);
+    if (!selectedChannel) return;
+    this.setData({
+      manualPayment: {
+        ...payment,
+        selectedChannelId,
+        selectedChannel
+      }
+    });
+  },
+
   copyManualPayment() {
     const payment = this.data.manualPayment;
     if (!payment) return;
     wx.setClipboardData({
       data: [
         "避坑宝报告解锁付款",
+        `付款方式：${payment.selectedChannel.label}`,
         `金额：${payment.amountText} 元`,
         `付款备注码：${payment.reference}`,
-        `收款方：${payment.accountName}`,
+        `收款方：${payment.selectedChannel.accountName}`,
         `订单号：${payment.orderId}`
       ].join("\n")
     });

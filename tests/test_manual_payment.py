@@ -18,8 +18,10 @@ class ManualPaymentFlowTests(unittest.TestCase):
             "app_ADMIN_TOKEN": app.BIKENGBAO_ADMIN_CONFIRM_TOKEN,
             "payment_PAYMENT_PROVIDER": payment.PAYMENT_PROVIDER,
             "payment_QR": payment.MANUAL_PAYMENT_QR_IMAGE_URL,
-            "payment_ACCOUNT_NAME": payment.MANUAL_PAYMENT_ACCOUNT_NAME,
-            "payment_ACCOUNT_HINT": payment.MANUAL_PAYMENT_ACCOUNT_HINT,
+            "payment_ALIPAY_QR": payment.MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL,
+            "payment_WECHAT_QR": payment.MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL,
+            "payment_ALIPAY_ACCOUNT_NAME": payment.MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME,
+            "payment_WECHAT_ACCOUNT_NAME": payment.MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME,
             "payment_NOTE_PREFIX": payment.MANUAL_PAYMENT_NOTE_PREFIX,
             "payment_EXPIRES": payment.MANUAL_PAYMENT_EXPIRES_MINUTES,
             "storage_DB_PROVIDER": storage.DB_PROVIDER,
@@ -39,9 +41,11 @@ class ManualPaymentFlowTests(unittest.TestCase):
         app.PAYMENT_PROVIDER = "manual_qr"
         app.BIKENGBAO_ADMIN_CONFIRM_TOKEN = "admin-secret"
         payment.PAYMENT_PROVIDER = "manual_qr"
-        payment.MANUAL_PAYMENT_QR_IMAGE_URL = "https://example.com/receipt-qr.png"
-        payment.MANUAL_PAYMENT_ACCOUNT_NAME = "避坑宝测试收款"
-        payment.MANUAL_PAYMENT_ACCOUNT_HINT = "支付宝收款码"
+        payment.MANUAL_PAYMENT_QR_IMAGE_URL = ""
+        payment.MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL = "https://example.com/alipay-qr.png"
+        payment.MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL = "https://example.com/wechat-qr.png"
+        payment.MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME = "支付宝测试收款"
+        payment.MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME = "微信测试收款"
         payment.MANUAL_PAYMENT_NOTE_PREFIX = "BKB"
         payment.MANUAL_PAYMENT_EXPIRES_MINUTES = 30
 
@@ -64,8 +68,10 @@ class ManualPaymentFlowTests(unittest.TestCase):
         app.BIKENGBAO_ADMIN_CONFIRM_TOKEN = self.originals["app_ADMIN_TOKEN"]
         payment.PAYMENT_PROVIDER = self.originals["payment_PAYMENT_PROVIDER"]
         payment.MANUAL_PAYMENT_QR_IMAGE_URL = self.originals["payment_QR"]
-        payment.MANUAL_PAYMENT_ACCOUNT_NAME = self.originals["payment_ACCOUNT_NAME"]
-        payment.MANUAL_PAYMENT_ACCOUNT_HINT = self.originals["payment_ACCOUNT_HINT"]
+        payment.MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL = self.originals["payment_ALIPAY_QR"]
+        payment.MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL = self.originals["payment_WECHAT_QR"]
+        payment.MANUAL_PAYMENT_ALIPAY_ACCOUNT_NAME = self.originals["payment_ALIPAY_ACCOUNT_NAME"]
+        payment.MANUAL_PAYMENT_WECHAT_ACCOUNT_NAME = self.originals["payment_WECHAT_ACCOUNT_NAME"]
         payment.MANUAL_PAYMENT_NOTE_PREFIX = self.originals["payment_NOTE_PREFIX"]
         payment.MANUAL_PAYMENT_EXPIRES_MINUTES = self.originals["payment_EXPIRES"]
         storage.DB_PROVIDER = self.originals["storage_DB_PROVIDER"]
@@ -80,10 +86,39 @@ class ManualPaymentFlowTests(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertEqual(payload["order"]["provider"], "manual_qr")
         self.assertEqual(payload["payment"]["mode"], "manual_qr")
-        self.assertEqual(payload["payment"]["qrImageUrl"], "https://example.com/receipt-qr.png")
-        self.assertEqual(payload["payment"]["accountName"], "避坑宝测试收款")
+        self.assertEqual(payload["payment"]["qrImageUrl"], "https://example.com/alipay-qr.png")
+        self.assertEqual(payload["payment"]["accountName"], "支付宝测试收款")
+        self.assertEqual(
+            payload["payment"]["channels"],
+            [
+                {
+                    "id": "alipay",
+                    "label": "支付宝",
+                    "qrImageUrl": "https://example.com/alipay-qr.png",
+                    "accountName": "支付宝测试收款",
+                    "accountHint": "支付宝收款码",
+                },
+                {
+                    "id": "wechat",
+                    "label": "微信支付",
+                    "qrImageUrl": "https://example.com/wechat-qr.png",
+                    "accountName": "微信测试收款",
+                    "accountHint": "微信收款码",
+                },
+            ],
+        )
         self.assertTrue(payload["payment"]["reference"].startswith("BKB-"))
-        self.assertIn(payload["payment"]["reference"], payload["payment"]["instructions"][1])
+        self.assertIn(payload["payment"]["reference"], payload["payment"]["instructions"][2])
+
+    def test_legacy_manual_qr_url_is_used_for_alipay_channel(self):
+        payment.MANUAL_PAYMENT_ALIPAY_QR_IMAGE_URL = ""
+        payment.MANUAL_PAYMENT_WECHAT_QR_IMAGE_URL = ""
+        payment.MANUAL_PAYMENT_QR_IMAGE_URL = "https://example.com/legacy-qr.png"
+
+        result = payment.create_manual_qr_payment({"id": "ord_legacy", "amount": 59})
+
+        self.assertEqual(result["channels"][0]["qrImageUrl"], "https://example.com/legacy-qr.png")
+        self.assertEqual(result["channels"][1]["qrImageUrl"], "")
 
     def test_admin_confirm_requires_token_and_unlocks_report(self):
         _, order_payload = self.request("POST", "/v1/orders", {"reportId": "rep_manual", "amount": 59})

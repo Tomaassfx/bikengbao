@@ -54,14 +54,26 @@
         </view>
         <text>待人工确认</text>
       </view>
+      <view class="payment-channels">
+        <button
+          class="payment-channel alipay {{manualPayment.selectedChannelId === 'alipay' ? 'selected' : ''}}"
+          data-channel="alipay"
+          bindtap="selectManualChannel"
+        >支付宝</button>
+        <button
+          class="payment-channel wechat {{manualPayment.selectedChannelId === 'wechat' ? 'selected' : ''}}"
+          data-channel="wechat"
+          bindtap="selectManualChannel"
+        >微信支付</button>
+      </view>
       <view class="manual-body">
-        <image wx:if="{{manualPayment.qrImageUrl}}" src="{{manualPayment.qrImageUrl}}" mode="aspectFit" />
+        <image wx:if="{{manualPayment.selectedChannel.qrImageUrl}}" src="{{manualPayment.selectedChannel.qrImageUrl}}" mode="aspectFit" />
         <view class="qr-placeholder" wx:else>
-          <text>收款码待配置</text>
+          <text>{{manualPayment.selectedChannel.label}}收款码待配置</text>
         </view>
         <view class="manual-detail">
-          <text>{{manualPayment.accountHint}}</text>
-          <text>{{manualPayment.accountName}}</text>
+          <text>{{manualPayment.selectedChannel.accountHint}}</text>
+          <text>{{manualPayment.selectedChannel.accountName}}</text>
           <text>付款备注码</text>
           <text class="reference">{{manualPayment.reference}}</text>
         </view>

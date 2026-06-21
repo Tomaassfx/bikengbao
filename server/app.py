@@ -15,6 +15,7 @@ from .config import (
     AI_PROVIDER,
     AUTH_PROVIDER,
     BIKENGBAO_ADMIN_CONFIRM_TOKEN,
+    BIKENGBAO_ASSET_UPLOAD_TOKEN,
     HOST,
     MAX_UPLOAD_BYTES,
     OCR_PROVIDER,
@@ -90,6 +91,11 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
 
         if route == "/v1/orders":
             self.handle_create_order(user_id)
+            return
+
+        payment_asset_match = re.fullmatch(r"/v1/admin/payment-assets/(alipay|wechat)", route)
+        if payment_asset_match:
+            self.handle_payment_asset_upload(payment_asset_match.group(1))
             return
 
         admin_confirm_match = re.fullmatch(r"/v1/admin/orders/([^/]+)/confirm-payment", route)
@@ -339,6 +345,55 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
         save_db(db)
         self.send_json({"order": self.public_order(order), "report": self.public_report(report)})
 
+    def handle_payment_asset_upload(self, channel: str) -> None:
+        if not self.asset_upload_authorized():
+            self.send_error_json(401, "付款资产上传密钥无效")
+            return
+
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.startswith("multipart/form-data"):
+            self.send_error_json(400, "请使用 multipart/form-data 上传图片")
+            return
+        content_length = int(self.headers.get("Content-Length", "0") or "0")
+        if content_length > MAX_UPLOAD_BYTES:
+            self.send_error_json(413, "图片过大，请压缩后再上传")
+            return
+
+        form = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": content_type},
+        )
+        file_item = form["file"] if "file" in form else None
+        if file_item is None or not getattr(file_item, "filename", ""):
+            self.send_error_json(400, "未收到图片")
+            return
+        image_type = getattr(file_item, "type", "") or ""
+        if not image_type.startswith("image/"):
+            self.send_error_json(400, "付款资产必须是图片")
+            return
+
+        filename = file_item.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        file_body = file_item.file.read()
+        storage_record = save_upload(
+            f"payment-{channel}-{uuid.uuid4().hex}",
+            filename,
+            file_body,
+            image_type,
+        )
+        if storage_record.get("storage") != "blob" or not storage_record.get("blobUrl"):
+            delete_upload(storage_record)
+            self.send_error_json(502, "付款资产必须上传到 Vercel Blob")
+            return
+        self.send_json(
+            {
+                "channel": channel,
+                "url": storage_record["blobUrl"],
+                "contentType": storage_record.get("contentType", image_type),
+            },
+            status=201,
+        )
+
     def handle_get_order(self, user_id: str, order_id: str) -> None:
         db = load_db()
         order = db["orders"].get(order_id)
@@ -451,6 +506,13 @@ class BikengbaoHandler(BaseHTTPRequestHandler):
             provided = auth.replace("Bearer ", "", 1)
         provided = provided or self.headers.get("X-Admin-Token", "")
         return hmac.compare_digest(provided, BIKENGBAO_ADMIN_CONFIRM_TOKEN)
+
+    def asset_upload_authorized(self) -> bool:
+        if not BIKENGBAO_ASSET_UPLOAD_TOKEN:
+            return False
+        auth = self.headers.get("Authorization", "")
+        provided = auth.replace("Bearer ", "", 1) if auth.startswith("Bearer ") else ""
+        return hmac.compare_digest(provided, BIKENGBAO_ASSET_UPLOAD_TOKEN)
 
     def read_json(self) -> Dict[str, Any]:
         body = self.read_raw_body().decode("utf-8")
